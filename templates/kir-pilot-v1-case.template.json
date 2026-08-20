@@ -5,14 +5,13 @@
     "这是非数据集模板；复制后写入待审草稿区，不要把本文件作为 Gold case 读取。",
     "先按 annotation guideline 独立判断 decision，再填写 target、evidence、slots，禁止从模型 prediction 反推 Gold。",
     "evidence_quote 必须逐字取自 state_summary 或 conversation 中的一段连续文本。",
-    "将所有 replace-* 占位符换成真实关系 ID 或 annotator ID；关系 ID 只表达真实的场景、对照或改写关系。",
+    "将 draft-template-* ID 和所有 replace-* 占位符换成草稿自己的 ID；关系 ID 只表达真实的场景、对照或改写关系。",
     "near_oos case 必须添加 near_oos tag、填写 sibling intent，并与对应 in-scope sibling 共用 contrast_group_id。",
-    "split_group_id 与 bootstrap_cluster_id 由 IE1.3 分组程序同时生成，人工编写时保持 null。",
+    "草稿不填写 split、split_group_id 或 bootstrap_cluster_id；它们由 IE1.3 的 materialization 与分组程序生成。",
     "只有完成 guideline 自检和独立复核后才能把 adjudication_status 从 draft 改为 reviewed；有分歧则按仲裁流程处理。"
   ],
   "case": {
     "id": "draft-template-001",
-    "split": "dev",
     "context": {
       "state_summary": "刚完成一张画，想随手看看别人最近分享的生活。",
       "conversation": [],
@@ -38,11 +37,9 @@
     "scenario_family_id": "replace-scenario-family",
     "contrast_group_id": "replace-contrast-group",
     "paraphrase_cluster_id": "replace-paraphrase-cluster",
-    "split_group_id": null,
-    "bootstrap_cluster_id": null,
     "source": "human_authored",
     "annotator_id": "replace-me",
     "adjudication_status": "draft",
-    "annotation_note": "模板示例；复制后替换所有 replace-* 字段，不能直接进入数据集。"
+    "annotation_note": "模板示例；复制后替换 draft-template-* ID 和所有 replace-* 字段，不能直接进入数据集。"
   }
 }

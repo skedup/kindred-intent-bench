@@ -4,7 +4,8 @@
 >
 > 适用版本：`kir-pilot-v1` 数据设计、`kindred-activity-intents-v1` taxonomy
 >
-> 机器可校验示例：[kir-pilot-v1-annotation-pack.yaml](../configs/kir-pilot-v1-annotation-pack.yaml)
+> 机器可校验示例：`kir-pilot-annotation-v2`
+> [kir-pilot-v1-annotation-pack.yaml](../configs/kir-pilot-v1-annotation-pack.yaml)
 >
 > 本规范和示例包不是 160 条正式 Gold，不包含 test split，也不授权生成 prediction 或调用 Provider。
 
@@ -22,12 +23,15 @@ State、Thought 或真实用户消息；正式数据只能是人工创作或人�
 
 ## 2. 四类 decision 的可执行决策树
 
+这棵树是给 **Gold 标注者、独立复核者和仲裁者** 使用的人工 SOP，不是运行时 router，也不会由离线
+validator 自动执行。`oos` 最终仍由人依据输入 evidence 和冻结 taxonomy 标记；机器只检查字段组合与覆盖合同。
+
 ```text
 输入是否表达现在或下一段生活的行动倾向？
   否 -> no_intent
-  是 -> 动作与对象是否具体到能判断目录覆盖？
-    否 -> ambiguous
-    是 -> 是否有且仅有一个 taxonomy Activity 能完整承接下一主要行动？
+  是 -> 能否从输入确定唯一的下一主要行动？
+    否（动作不具体，或多个候选无主次） -> ambiguous
+    是 -> taxonomy 中是否有一个 Activity 能完整承接这个单一具体行动？
       是 -> in_scope + 唯一 target_intent
       否 -> oos
 ```
@@ -73,7 +77,7 @@ State、Thought 或真实用户消息；正式数据只能是人工创作或人�
 | `guide-oos-negative-03` | 反例 | 想做轻松的事但没决定是什么 | `ambiguous` | 有倾向但不具体 |
 | `guide-oos-adjudication-01` | 仲裁 | 裁剪、调色已有照片，不创作新图 | `oos` | 编辑既有内容不满足“创作新视觉作品” |
 | `guide-oos-adjudication-02` | 仲裁 | 给一位老朋友发消息 | `oos` | `reach_out_to_user` 不泛化为任意第三方 |
-| `guide-oos-adjudication-03` | 仲裁 | 在家看线上展览直播 | `oos` | 线上观看不满足前往线下文化场所 |
+| `guide-oos-adjudication-03` | 仲裁 | 在家找个线上展览，具体哪个都行 | `oos` | 行动类型足够具体；未指定展览不改变目录外结论 |
 
 ### 2.3 `no_intent`：正例、反例、仲裁例
 
@@ -85,8 +89,8 @@ State、Thought 或真实用户消息；正式数据只能是人工创作或人�
 | `guide-no-intent-negative-01` | 反例 | 现在闭眼休息 | `in_scope/rest` | 已主动选择休息 |
 | `guide-no-intent-negative-02` | 反例 | 现在听半小时播客 | `oos` | 具体动作只是目录外 |
 | `guide-no-intent-negative-03` | 反例 | 散步和看展还没决定 | `ambiguous` | 有行动倾向但候选难分 |
-| `guide-no-intent-adjudication-01` | 仲裁 | 有点饿，但不打算吃也不准备做什么 | `no_intent` | 状态不能越过明确否定 |
-| `guide-no-intent-adjudication-02` | 仲裁 | 周末也许去书店，现在先不安排 | `no_intent` | later 愿望不触发当前 routing |
+| `guide-no-intent-adjudication-01` | 仲裁 | 想听音乐，但不打算打开也不准备做什么 | `no_intent` | 目录外动作被明确否定，不能标 OOS |
+| `guide-no-intent-adjudication-02` | 仲裁 | 周末也许做点什么，现在先不安排 | `no_intent` | 宽泛 later 愿望被推迟，不是当前 ambiguous |
 | `guide-no-intent-adjudication-03` | 仲裁 | 刚看完公开帖子，接下来没想好 | `no_intent` | recent activity 不是下一行动 |
 
 ### 2.4 `ambiguous`：正例、反例、仲裁例
@@ -119,7 +123,7 @@ State、Thought 或真实用户消息；正式数据只能是人工创作或人�
 | `take_a_walk` | 沿河步行；下楼散步透气 | 走去餐馆→`dine_out`；步行去博物馆→`visit_cultural_place` | 步行本身是目的，没有更主要的目的地任务 |
 | `visit_cultural_place` | 去美术馆看展；去独立书店体验 | 无目的地走走→`take_a_walk`；看线上展览→`oos` | 必须前往线下文化场所 |
 
-机器包中每个 intent 固定两条 inclusion 和两条 exclusion；其中 exclusion 可以落到另一个 intent、`oos`、
+当前机器包版本中每个 intent **恰好**固定两条 inclusion 和两条 exclusion；其中 exclusion 可以落到另一个 intent、`oos`、
 `no_intent` 或 `ambiguous`，但绝不能仍落回正在排除的 intent。
 
 ## 4. near-OOS 与 sibling 配对
@@ -198,7 +202,8 @@ far-OOS 则与现有 intent 没有需要特别防止的近邻混淆，例如整�
 | `source` | `human_authored` 为人工起草；`llm_assisted_human_reviewed` 必须记录辅助来源并经人工独立定标；`synthetic_fixture` 只用于测试代码，不进入正式 Gold |
 
 共享前三种任一关系 ID 的 case 在图上连边；IE1.3 对完整连通分量生成相同 `split_group_id`，并令
-`bootstrap_cluster_id=split_group_id`。人工编写阶段两字段都保持 `null`，禁止手填或为了满足 split 比例拆组。
+`bootstrap_cluster_id=split_group_id`。DraftCase 编写阶段不包含 `split` 或这两个生成字段；IE1.3 materialization
+时才同时加入，禁止提前手填或为了满足 split 比例拆组。
 `source` 只作 provenance/分层，不作为 group key。dev/test 只能按完整 group 分配。
 
 ## 8. 标注、自检、复核与仲裁
@@ -223,6 +228,11 @@ draft（起草并自检） -> reviewed（独立复核一致）
 `rationale`、`resolution`、`adjudicator_id`。只有一名标注者时，至少间隔 3 天盲重标；这种复核不能冒充
 inter-annotator agreement，必须在 dataset card 披露。未解决分歧一律 `exclude_from_freeze`。
 
+机器包使用完整的 `competing_labels = {decision, target_intent}` 记录候选标签，而不是只记录一级 decision：
+这使仲裁既能表达 `oos` 与 `ambiguous` 的拒识分歧，也能表达 `dine_out` 与 `take_a_walk` 这种同为
+`in_scope` 的 intent 分歧。12 条仲裁 fixture 必须覆盖六种不同 decision 两两组合，并至少包含一组
+in-scope intent 间的竞争；最终 Gold 必须是 competing labels 之一。
+
 ## 9. Dataset card 的强制限制声明
 
 IE1.3 冻结时，dataset card 必须明确写出以下七项；括号中的机器标识不可省略：
@@ -239,8 +249,9 @@ IE1.3 冻结时，dataset card 必须明确写出以下七项；括号中的机�
 ## 10. 编写模板与离线校验
 
 复制 [kir-pilot-v1-case.template.json](../templates/kir-pilot-v1-case.template.json) 后再起草。模板本身带
-`non_dataset_case_authoring_template` wrapper、`draft-template-*` ID、`draft` 状态和未分组标记，不能被当作
-正式 case。必须替换全部 `replace-*` 字段，且不得直接编辑模板原件来累积数据。
+`non_dataset_case_authoring_template` wrapper，并使用不含 `split/split_group_id/bootstrap_cluster_id` 的
+`DraftCase`；即使抽出内部 `case`，也不能通过正式 `Case` schema。必须替换 `draft-template-*` ID 和全部
+`replace-*` 字段，且不得直接编辑模板原件来累积数据。
 
 在任何批量 Gold 编写前运行：
 
@@ -255,7 +266,7 @@ near-OOS、四个必测 tag、brandless 与 multi-turn 约束、仲裁合同、d
 ## 11. IE1.1 Exit Gate
 
 - [x] 四类 decision 各 3 个正例、3 个反例、3 个仲裁例，共 36 条 guideline fixtures；
-- [x] 8 个 intent 各有至少 2 个 inclusion / 2 个 exclusion 对照；
+- [x] 8 个 intent 在当前 pack 各有恰好 2 个 inclusion / 2 个 exclusion 对照；
 - [x] 每个 intent 有一组 near-OOS/sibling 配对；
 - [x] multi-turn、context-distractor、brandless XHS、rest/eat confusion 均有规则与机器示例；
 - [x] 分歧字段、仲裁流程、单标注者重检限制和 dataset-card 七项披露已固定；
