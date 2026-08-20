@@ -1,6 +1,6 @@
 # 求职优先的意图识别 Workbench：数据、基线、OOS 与评测闭环
 
-> 🏛️ **Status**: `implementation-plan review closed / design only / implementation not authorized`
+> ✅ **Status**: `IE0 complete / IE1 not started`
 >
 > 日期：2026-08-20
 >
@@ -35,7 +35,8 @@ ID Macro-F1 / OOS-F1 / hard-negative / slot / latency / cost
 > OOS/near-OOS 拒识与弱模型稳定性，同时不明显损害已知 Activity、`no_intent`、延迟和成本？
 
 该路线以 **9 个有效工作日完成 160 条样本的 portfolio pilot** 为目标，另留 2 天风险缓冲；只有 pilot 值得扩展时，再增加至
-240 条、复标、弱模型稳定性和更严格统计，完整规模约 **12～19 个有效工作日**。全过程不改
+240 条、复标、弱模型稳定性和更严格统计，完整规模约 **14～19 个有效工作日**（含 Pilot 风险缓冲时
+最多 21 天）。全过程不改
 `src/kindred` 生产路径、不新增 DB、不改变 graph、不接管真实 Activity。无论双阶段结果是 promising、
 inconclusive 还是 negative，都能形成有价值的求职材料，实验也不会影响 Kindred 的生活自主性。
 
@@ -376,7 +377,9 @@ quiet_control
 dev/test 只能按完整 `split_group_id` 分配，同一 group 不得跨 split。paired cluster bootstrap 从 test 的
 `bootstrap_cluster_id` 集合中有放回抽取同样数量的 cluster，每次抽到一个 cluster 就纳入其中全部 case；
 B2b/B3 使用完全相同的 cluster draws。任何 required metric slice 少于 8 个不同 cluster 时，不生成正式
-CI，并由 verdict 判为 `inconclusive`。这三个数值和算法进入 evaluator 单元测试，不允许看结果后更换。
+CI，并由 verdict 判为 `inconclusive`。CI 固定使用 percentile 95% interval、10,000 次重采样、seed
+`20260820`；2.5%/97.5% 分位数使用 Type-7 线性插值，即排序后位置 `h=(n-1)q`，在相邻 order statistic
+间插值。这些数值和算法进入 evaluator 单元测试，不允许看结果后更换。
 
 冻结分两层：`freeze-manifest.json` 固定 taxonomy/dev/test/split hashes；
 `kir-pilot-v1-experiment.yaml` 固定 Prompt、few-shot IDs、adapter config、阈值、prototype IDs、模型角色、
@@ -411,11 +414,20 @@ B0/B1 不能故意做成只会输出 Activity/OOS 的陪跑基线。B0 也必须
 - 报告各类 prototype 的 case id 和数量。B2a/B2b/B3 的 few-shot 也只能来自同一 dev pool，并分别报告
   使用条数；本实验不宣称不同模型范式的 label consumption 完全相等。
 
+B1 的所有 query/example embedding 先做 L2 normalize；每类 example 的单位向量求 centroid 后再次 L2
+normalize。令 `a_i=cos(q, activity_centroid_i)`，`activity_score=max_i(a_i)`，
+`no_intent_score=cos(q, no_intent_centroid)`，`oos_score=cos(q, oos_centroid)`，并定义：
+
+```text
+actionability_score = max(activity_score, oos_score) - no_intent_score
+```
+
 B1 固定按以下 gate 顺序输出四类：
 
-1. actionability gate：区分 `no_intent` 与存在行动倾向；
-2. top-1 similarity threshold：拒绝明确 OOS；
-3. top-1/top-2 margin：margin 过小时输出 `ambiguous`；
+1. 若 `actionability_score < tau_actionability`，输出 `no_intent`；
+2. 若 `oos_score - activity_score >= tau_oos_margin`，或
+   `activity_score < tau_activity_min`，输出 `oos`；
+3. 若 top-1/top-2 Activity score 差 `< tau_ambiguity`，输出 `ambiguous`；
 4. 以上均未触发时输出 `in_scope` 与 top-1 Activity。
 
 actionability、similarity 和 margin 阈值只在 dev 调整；prototype、阈值与 gate 实现都在 test 前冻结。
@@ -456,6 +468,11 @@ Pilot 至少运行：
 和预期 usage metadata，并分别用单条 dev fixture 完成 connectivity、结构化输出、超时和 token-usage smoke。
 IE3 的机器 Exit Gate 要求 `B2a/B2b/B3 × primary/weak` 六个 LLM run 全部有匹配 manifest；B0/B1 各运行
 一次，不进入 LLM 模型矩阵。
+
+本次 IE0 以 Kindred/OpenClaw `agent:main:main` 的运行时模型元数据为 authority，预登记
+`gemini-3.6-flash` 为 primary、同 Provider 的 `gemini-3.5-flash` 为 weak、
+`gemini-embedding-001` 为 embedding。Kindred 运行环境中另有 Grok、DeepSeek、OpenAI 可选模型；它们
+登记为 candidate pool，但不在 IE0 扩成未预注册的横评矩阵。
 
 同一模型重复三次的稳定性子集后置到 240 条 IE-V1 扩展，避免 pilot 同时承担所有严谨性增强。
 
@@ -748,7 +765,7 @@ tests/               # unit、contract、offline integration
 | Pilot 金标数据 | 160 条 JSONL |
 | Pilot 文件 | 约 14～20 个 |
 | Pilot 排期 | 目标 9 个有效工作日；另留 2 天风险缓冲 |
-| IE-V1 完整规模 | 240 条；累计约 12～19 个有效工作日 |
+| IE-V1 完整规模 | 240 条；累计约 14～19 个有效工作日，含 Pilot 风险缓冲时最多 21 天 |
 | 生产风险 | 近零；不进入 `src/kindred` runtime |
 
 若时间不足，优先保证 IE0、IE1、B2a、B2b、B3 与报告；B0/B1 可以减少工程包装，但不能删除 frozen

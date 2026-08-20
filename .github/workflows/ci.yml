@@ -1,0 +1,30 @@
+name: offline-ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GEMINI_API_KEY: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Install locked dependencies
+        run: uv sync --locked
+      - name: Lint
+        run: uv run ruff format --check . && uv run ruff check .
+      - name: Type check
+        run: uv run mypy src
+      - name: Unit tests
+        run: uv run pytest
+      - name: Validate frozen taxonomy
+        run: uv run intentbench taxonomy validate configs/kindred-activity-intents-v1.yaml

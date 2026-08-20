@@ -1,0 +1,84 @@
+{
+  "checked_at": "2026-08-20T15:51:39.904143+00:00",
+  "execution_environment": "user-provided-us-linux",
+  "fixture_id": "synthetic-intent-readiness-v1",
+  "fixture_scope": "synthetic_dev_only",
+  "model_authority": {
+    "observed_on": "2026-08-20",
+    "source": "kindred_openclaw_main_session_runtime_metadata"
+  },
+  "results": [
+    {
+      "connectivity": true,
+      "fixture_expectation_match": true,
+      "identity_match": true,
+      "input_tokens": 42,
+      "latency_ms": 1851.186,
+      "output_tokens": 206,
+      "provider": "google_generative_language",
+      "provider_usage_fields": [
+        "candidatesTokenCount",
+        "promptTokenCount",
+        "thoughtsTokenCount",
+        "totalTokenCount"
+      ],
+      "raw_response_sha256": "779760ebd5456e49e1d1ce692e52a948b50760373dbc2ae9ac64c066ac84f47a",
+      "reported_model": "gemini-3.6-flash",
+      "requested_model": "gemini-3.6-flash",
+      "role": "primary_decision",
+      "status": "passed",
+      "structured_output_valid": true,
+      "timeout_seconds": 30.0,
+      "total_tokens": 248,
+      "usage_available": true
+    },
+    {
+      "connectivity": true,
+      "fixture_expectation_match": true,
+      "identity_match": true,
+      "input_tokens": 42,
+      "latency_ms": 1433.678,
+      "output_tokens": 198,
+      "provider": "google_generative_language",
+      "provider_usage_fields": [
+        "candidatesTokenCount",
+        "promptTokenCount",
+        "thoughtsTokenCount",
+        "totalTokenCount"
+      ],
+      "raw_response_sha256": "1c27f617de0af6d05224e9a4d475571aaa41661a6dafc50afad8e463cb804eaa",
+      "reported_model": "gemini-3.5-flash",
+      "requested_model": "gemini-3.5-flash",
+      "role": "weak_decision",
+      "status": "passed",
+      "structured_output_valid": true,
+      "timeout_seconds": 30.0,
+      "total_tokens": 240,
+      "usage_available": true
+    },
+    {
+      "connectivity": true,
+      "dimension": 3072,
+      "dimension_match": true,
+      "expected_dimension": 3072,
+      "finite_vector": true,
+      "identity_evidence": "model_specific_request_endpoint",
+      "identity_reported_by_provider": false,
+      "latency_ms": 230.949,
+      "provider": "google_generative_language",
+      "raw_response_sha256": "09f7ce39f8906bdca381a43b9089f6a3c5ce3ba45188ef2540e6faa1cbe80946",
+      "reported_model": null,
+      "requested_model": "gemini-embedding-001",
+      "role": "embedding",
+      "status": "passed",
+      "timeout_seconds": 30.0
+    }
+  ],
+  "runtime": {
+    "machine": "x86_64",
+    "system": "Linux"
+  },
+  "schema_version": 1,
+  "secret_policy": "environment_variable_name_only; no secret or raw response persisted",
+  "status": "passed"
+}

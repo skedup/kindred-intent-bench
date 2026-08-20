@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "fixture_id": "synthetic-intent-readiness-v1",
+  "prompt": "A fictional agent says: 我现在想去附近慢慢走一圈透气。 Classify only the observable next-action intent. Return JSON with decision, predicted_intent, and reason_short.",
+  "expected": {
+    "decision": "in_scope",
+    "predicted_intent": "take_a_walk"
+  },
+  "embedding_text": "想去附近慢慢走一圈透气"
+}

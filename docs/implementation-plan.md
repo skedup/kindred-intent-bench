@@ -1,6 +1,6 @@
 # Kindred Intent Bench 实施计划
 
-> Status: `revised after dual review / ready for IE0 approval`
+> Status: `IE0 complete / IE1 not started`
 >
 > 日期：2026-08-20
 >
@@ -371,8 +371,8 @@ uv.lock
 .gitignore
 .github/workflows/ci.yml
 README.md
-src/intentbench/{cli,schemas,taxonomy,evaluator,metrics,bootstrap,verdict,freeze}.py
-src/intentbench/adapters/base.py
+src/intentbench/{cli,schemas,taxonomy,b1,evaluator,metrics,bootstrap,verdict,freeze,providers}.py
+src/intentbench/adapters/{base,google}.py
 configs/{kindred-activity-intents-v1.yaml,kir-pilot-v1-experiment.yaml,provider-readiness.json}
 tests/unit/
 tests/fixtures/provider-smoke.json

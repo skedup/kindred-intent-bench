@@ -1,0 +1,24 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.coverage
+htmlcov/
+
+# Provider material is local unless explicitly reduced to safe readiness metadata.
+.provider-cache/
+provider-responses/
+*.provider-response.json
+
+# IE0 does not version ad-hoc experiment probes.
+experiments/*/
+!experiments/.gitkeep

@@ -1,0 +1,122 @@
+schema_version: 1
+taxonomy_version: kindred-activity-intents-v1
+intents:
+  - name: create_picture
+    definition: 创作、绘制或生成一幅新的视觉作品。
+    inclusion_criteria:
+      - 明确想画画、做插画或生成新图片
+      - 下一主要行动是视觉创作而非浏览已有内容
+    exclusion_criteria:
+      - 仅浏览别人发布的图片或帖子
+      - 参观展览或欣赏线下艺术作品
+    canonical_examples:
+      - 我想画一张窗边的晚霞。
+      - 来做一幅新的小插画吧。
+      - 想把刚才的灵感画成图片。
+      - 我准备生成一张海边夜景图。
+    sibling_intents: [play_xiaohongshu, visit_cultural_place]
+
+  - name: dine_out
+    definition: 离开当前住处，到餐馆、咖啡馆或其他餐饮场所用餐。
+    inclusion_criteria:
+      - 明确想去外面的餐饮场所吃喝
+      - 外出用餐是下一主要行动
+    exclusion_criteria:
+      - 在家准备、订购或享用食物
+      - 仅散步且没有用餐目标
+    canonical_examples:
+      - 想去附近的小馆子吃晚饭。
+      - 我准备出门找家咖啡馆坐坐。
+      - 今晚去餐厅尝点新菜吧。
+      - 想在外面吃碗热汤面。
+    sibling_intents: [eat_at_home, take_a_walk]
+
+  - name: eat_at_home
+    definition: 在当前住处准备、订购或享用一顿食物。
+    inclusion_criteria:
+      - 明确想在家吃东西或准备食物
+      - 点外卖但在家用餐
+    exclusion_criteria:
+      - 去餐馆、咖啡馆等场所用餐
+      - 仅表达饥饿却没有当前行动倾向
+    canonical_examples:
+      - 我想在家煮碗面吃。
+      - 今晚不出门，点份外卖吧。
+      - 去厨房做点简单的晚饭。
+      - 想留在家里吃点热乎的。
+    sibling_intents: [dine_out, rest]
+
+  - name: play_xiaohongshu
+    definition: 浏览小红书或类似的公开生活方式帖子，以观看他人分享为主要目的。
+    inclusion_criteria:
+      - 明确想刷小红书
+      - 未说品牌名但想随手浏览他人公开分享的生活内容
+    exclusion_criteria:
+      - 创作或发布一张新图片
+      - 主动联系用户或特定的人
+    canonical_examples:
+      - 我想刷一会儿小红书。
+      - 随手看看别人最近分享的生活吧。
+      - 想翻翻公开帖子找点穿搭灵感。
+      - 看看大家最近都在分享什么。
+    sibling_intents: [create_picture, reach_out_to_user, rest]
+
+  - name: reach_out_to_user
+    definition: 主动向用户发起一条消息、问候或联系。
+    inclusion_criteria:
+      - 明确想给用户发消息或问候
+      - 联系用户是下一主要行动
+    exclusion_criteria:
+      - 只是在心里想念但决定不打扰
+      - 浏览无关的公开社交内容
+    canonical_examples:
+      - 我想给你发条消息问问近况。
+      - 现在想主动联系一下你。
+      - 给你写一句晚安吧。
+      - 想发消息和你分享刚才的画。
+    sibling_intents: [play_xiaohongshu, rest]
+
+  - name: rest
+    definition: 暂停其他主要行动，安静休息、放松或睡一会儿。
+    inclusion_criteria:
+      - 明确想休息、睡觉或安静放松
+      - 保持低行动状态是主动选择
+    exclusion_criteria:
+      - 只是疲惫的状态事实而没有休息意图
+      - 在家吃东西或浏览公开内容
+    canonical_examples:
+      - 我现在想安静休息一会儿。
+      - 有点累，准备睡个午觉。
+      - 什么也不做，靠着放松一下吧。
+      - 今晚想早点睡。
+    sibling_intents: [eat_at_home, play_xiaohongshu, reach_out_to_user]
+
+  - name: take_a_walk
+    definition: 以步行、透气或随意转转为主要目的外出活动。
+    inclusion_criteria:
+      - 明确想散步、走一圈或出门透气
+      - 没有更主要的用餐或参观目的
+    exclusion_criteria:
+      - 目的地是餐馆并以吃饭为主
+      - 目的地是博物馆、美术馆等文化场所
+    canonical_examples:
+      - 想去附近慢慢走一圈透气。
+      - 我准备下楼散散步。
+      - 出门随便转一会儿吧。
+      - 想沿着河边走走。
+    sibling_intents: [dine_out, visit_cultural_place]
+
+  - name: visit_cultural_place
+    definition: 前往博物馆、美术馆、展览、书店等文化场所参观或体验。
+    inclusion_criteria:
+      - 明确想参观文化场所或特定展览
+      - 文化体验是下一主要行动
+    exclusion_criteria:
+      - 只想无目的散步
+      - 在家创作新的图片
+    canonical_examples:
+      - 我想去附近的美术馆看展。
+      - 下午去博物馆逛逛吧。
+      - 想到独立书店里慢慢看看。
+      - 准备去参观那个摄影展。
+    sibling_intents: [create_picture, take_a_walk]
