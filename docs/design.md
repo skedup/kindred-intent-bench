@@ -1,6 +1,6 @@
 # 求职优先的意图识别 Workbench：数据、基线、OOS 与评测闭环
 
-> 🏛️ **Status**: `targeted re-review closed / design only / implementation not authorized`
+> 🏛️ **Status**: `implementation-plan review closed / design only / implementation not authorized`
 >
 > 日期：2026-08-20
 >
@@ -34,7 +34,7 @@ ID Macro-F1 / OOS-F1 / hard-negative / slot / latency / cost
 > 目录 grounding”相比单调用 LLM 和**等调用次数、可比 token 预算**的单通道复核，是否能提升层级正确率、
 > OOS/near-OOS 拒识与弱模型稳定性，同时不明显损害已知 Activity、`no_intent`、延迟和成本？
 
-该路线先做 **7～9 个有效工作日、160 条样本的 portfolio pilot**；只有 pilot 值得扩展时，再增加至
+该路线以 **9 个有效工作日完成 160 条样本的 portfolio pilot** 为目标，另留 2 天风险缓冲；只有 pilot 值得扩展时，再增加至
 240 条、复标、弱模型稳定性和更严格统计，完整规模约 **12～19 个有效工作日**。全过程不改
 `src/kindred` 生产路径、不新增 DB、不改变 graph、不接管真实 Activity。无论双阶段结果是 promising、
 inconclusive 还是 negative，都能形成有价值的求职材料，实验也不会影响 Kindred 的生活自主性。
@@ -227,15 +227,41 @@ V1 评测的是“下一段主要 Activity”这一单选择问题，不实现 m
 
 约束：
 
-- `reason_short` 只是一句可审计解释，不是隐藏推理链；
+- `reason_short` 在四类 decision 下都必填，长度为 1～200 个 Unicode 字符；它只是一句可审计解释，
+  不是隐藏推理链；
 - `oos/no_intent/ambiguous` 的 `predicted_intent` 必须为 `null`；
-- `ambiguous` 可以在 `candidate_intents` 中记录两个以上候选用于诊断，但不参与 target 得分；
+- `in_scope/oos/no_intent` 的 `candidate_intents` 必须为空；`ambiguous` 可以为空，或包含两个以上不同的
+  taxonomy intents，不能恰好只有一个；该字段只用于诊断，不参与 target 得分；
 - `in_scope` 的 `predicted_intent` 必须属于冻结 taxonomy，`candidate_intents` 必须为空；
+- `slots` 对四类 decision 都必须存在；`desired_experience/object` 是 nullable string，`horizon` 只能为
+  `now/later/unspecified`。这些字段不决定一级 Gold；
 - schema invalid 单独计错，不能由评测器静默修复。
+
+Gold 的字段合同与 prediction 分开：
+
+| Gold 字段 | `in_scope` | `oos` | `no_intent` | `ambiguous` |
+|---|---|---|---|---|
+| `target_intent` | 必填且属于 taxonomy | `null` | `null` | `null` |
+| `evidence_quote` | 必填 | 必填 | 必填 | 必填 |
+| `near_oos_sibling_intents` | `[]` | near-OOS 时至少 1 个，否则 `[]` | `[]` | `[]` |
+| `slots` | 必填 | 必填 | 必填 | 必填 |
+
+`evidence_quote` 必须是 Unicode 规范化后 `context.state_summary` 或某条 conversation content 的连续子串；
+它证明标注决定来自输入，不代表 `no_intent` 必须含有正向行动表达。near-OOS case 还必须通过相同
+`contrast_group_id` 关联至少一个 sibling-ID case，且其 Gold target 出现在
+`near_oos_sibling_intents`。
+
+评测全集以 Gold case IDs 为准：
+
+- missing prediction、Provider failure 和 schema-invalid prediction 都保留该 case，并记 HEM=0；
+- confusion matrix 使用额外的 `invalid` prediction 列，不通过 inner join 丢弃失败样本；
+- duplicate case ID 或 Gold 之外的 extra prediction 使整个 run contract invalid，只输出诊断，不生成
+  authoritative verdict；
+- paired comparison 与 bootstrap 始终使用完整 Gold 全集，不能只保留两个实验臂共同成功的 case。
 
 V1 不把自由文本 `desired_experience/object` 做字符串 exact match。自动指标只计算 `horizon` 等受控枚举
 和字段完整性；Pilot 固定 24 条、扩展固定 40 条 semantic-preservation slice，由人工 rubric 判断关键
-动作与对象是否被保留。
+动作、对象与时间范围是否被保留。
 若后续投递传统 NLU/slot-filling 岗，再把 slot 改为受控 ontology 或输入 span，并报告 slot micro-F1。
 
 ## 4. 数据集设计
@@ -304,6 +330,7 @@ quiet_control
     "decision": "in_scope",
     "target_intent": "play_xiaohongshu",
     "evidence_quote": "现在想随手看看别人最近分享的生活",
+    "near_oos_sibling_intents": [],
     "slots": {
       "desired_experience": "看看别人最近分享了什么",
       "object": "公开帖子",
@@ -314,6 +341,8 @@ quiet_control
   "scenario_family_id": "post_creation_next_action",
   "contrast_group_id": "browse_vs_create",
   "paraphrase_cluster_id": "browse_public_life_03",
+  "split_group_id": "sg-kir-0042",
+  "bootstrap_cluster_id": "sg-kir-0042",
   "source": "human_authored",
   "annotator_id": "a1",
   "adjudication_status": "reviewed",
@@ -329,8 +358,11 @@ quiet_control
 
 1. 先写 annotation guideline，再写样本；
 2. dev/test 在 Prompt 调优前固定，test 不进入 few-shot examples；
-3. split 按 `scenario_family/source/paraphrase_cluster` 分组，不只按单句改写分组；
-4. 每条样本必须有 `scenario_family_id / contrast_group_id / paraphrase_cluster_id / source`；
+3. 用 case 关系图生成唯一分组：任意两条 case 只要共享 `scenario_family_id`、`paraphrase_cluster_id` 或
+   `contrast_group_id` 就连边；每个连通分量得到一个稳定的 `split_group_id`，其字面值由分量内最小 case id
+   派生；`bootstrap_cluster_id = split_group_id`；
+4. `source` 只用于 provenance 与分层统计，不能作为 group key，否则 `human_authored` 会把所有人工样本
+   合并成一个 group；每条样本必须有上述三个关系 id、两个生成 id 与 `source`；
 5. Activity description 不能直接复制成测试输入；
 6. B0 规则、B1 阈值、Prompt 和 few-shot examples 在看 test prediction 前冻结；
 7. IE-V1 至少 25% 样本做独立双标，报告 Cohen's kappa 或原始一致率；
@@ -340,6 +372,16 @@ quiet_control
 10. 同一人若编写 test、阅读 Gold 又调 Prompt，无法宣称 blind test；应优先由第二人保管 frozen test，
     否则必须在报告披露潜在人为记忆泄漏；
 11. 任何测试集修订都增加 dataset version，不覆盖旧结果。
+
+dev/test 只能按完整 `split_group_id` 分配，同一 group 不得跨 split。paired cluster bootstrap 从 test 的
+`bootstrap_cluster_id` 集合中有放回抽取同样数量的 cluster，每次抽到一个 cluster 就纳入其中全部 case；
+B2b/B3 使用完全相同的 cluster draws。任何 required metric slice 少于 8 个不同 cluster 时，不生成正式
+CI，并由 verdict 判为 `inconclusive`。这三个数值和算法进入 evaluator 单元测试，不允许看结果后更换。
+
+冻结分两层：`freeze-manifest.json` 固定 taxonomy/dev/test/split hashes；
+`kir-pilot-v1-experiment.yaml` 固定 Prompt、few-shot IDs、adapter config、阈值、prototype IDs、模型角色、
+预算、verdict 与 dependency lock。`run --split test` 必须同时验证两层文件存在且所有 hash 匹配，否则拒绝
+运行；该拒绝路径必须有自动测试。
 
 Pilot 默认称为 **non-blind frozen-test portfolio evaluation**。只有 Gold 由独立人员保管、实验者在 adapter、
 Prompt 和阈值冻结前不可见，才允许称为 blind test。单人实施时，在生成任何 test prediction 前记录
@@ -377,6 +419,14 @@ B1 固定按以下 gate 顺序输出四类：
 4. 以上均未触发时输出 `in_scope` 与 top-1 Activity。
 
 actionability、similarity 和 margin 阈值只在 dev 调整；prototype、阈值与 gate 实现都在 test 前冻结。
+B1 默认把每类 canonical-example embedding 做 L2 normalize 后取 centroid，并使用 cosine similarity；所有可选
+聚合方式、阈值网格和 tie-break 写入 experiment config。阈值组合按 dev HEM、decision Macro-F1 依次降序
+选择，仍相同时取按参数名排序后的数值 tuple 字典序最小项，确保相同 dev 得到唯一配置；用 golden fixture
+固定该行为。
+
+B2a、B2b、B3 必须使用完全相同的 few-shot case IDs、顺序和数量；否则 run 标记
+`supervision-confounded`，不能进入严格结构消融。B2b 第一次调用必须与 B2a 的调用合同完全相同，并直接
+复用 B2a 在相同 case/model/Prompt/config hash 下的缓存输出；B2b-B2a 才能解释为 verifier 的增量。
 
 B2b 与 B3 固定相同模型、两次调用、每次 max-output-token budget、输入事实、temperature、重试次数、
 schema repair policy 与候选顺序。B2b 两次都使用同一闭集决策语义，第二次只审查/修正第一次结果；B3 第一
@@ -401,6 +451,11 @@ Pilot 至少运行：
 全局 `promising/inconclusive/negative` 只由该模型决定；低性能模型使用同一 evaluator 单独给出三态
 结果，作为弱模型鲁棒性切片，不能与主模型平均，也不能在结果出来后改成主判模型。若本次求职实验专门
 研究低性能模型，可以预先把低性能模型登记为 `primary_decision_model`，但必须在 manifest 说明理由。
+
+模型选择不能推迟到正式运行：IE0 必须登记 primary LLM、weak LLM、embedding model、adapter、环境变量名
+和预期 usage metadata，并分别用单条 dev fixture 完成 connectivity、结构化输出、超时和 token-usage smoke。
+IE3 的机器 Exit Gate 要求 `B2a/B2b/B3 × primary/weak` 六个 LLM run 全部有匹配 manifest；B0/B1 各运行
+一次，不进入 LLM 模型矩阵。
 
 同一模型重复三次的稳定性子集后置到 240 条 IE-V1 扩展，避免 pilot 同时承担所有严谨性增强。
 
@@ -450,16 +505,22 @@ Hugging Face 训练、GPU 环境、公共数据适配和生产 runtime。
 | ambiguous precision / recall / F1 | 是否正确 abstain，而不是对所有困难样本都报 ambiguous |
 | per-intent recall | 小众 Activity 是否真的可达 |
 | horizon accuracy / slot completeness | 受控字段是否正确、完整 |
-| semantic-preservation audit | Pilot 固定 24 条、扩展固定 40 条，人工审查动作与对象是否被保留 |
+| semantic-preservation audit | Pilot 固定 24 条、扩展固定 40 条，人工审查动作、对象与时间范围是否被保留 |
 | context-distractor consistency | 天气、历史等非意图事实是否错误覆盖明确 evidence |
 | schema invalid rate | 输出合同是否稳定 |
 | repeat instability | 同场景重复调用是否翻转 decision/intent |
 | P50/P95 latency | 双阶段的实际延迟代价 |
 | tokens / estimated cost | 效果提升是否值得成本 |
 
+Pilot 的 24 条 semantic-preservation audit 保留为**诊断项，不进入三态 verdict**。slice IDs 在 test 前冻结；
+对 B3 的 primary/weak 两个模型分别审查，共 48 行记录。人工 rubric 只检查
+`action/object/horizon` 三项，分别记 `preserved/partial/lost`，结果写入
+`semantic-audit.csv`。它不计算 slot F1，也不能用于事后调 Prompt。保留它是为了验证 B3 阶段 A 没有在
+自由文本表示中丢失关键语义，而不是为了把 Pilot 扩成 slot-filling 项目。
+
 ### 6.3 比较方式
 
-- 报告 point estimate 与按 `scenario_family/paraphrase_cluster` 重采样的 bootstrap 95% confidence interval；
+- 报告 point estimate 与按 §4.4 `bootstrap_cluster_id` 重采样的 bootstrap 95% confidence interval；
 - B2a/B2b/B3 在同一 test cases 上做 paired comparison；
 - 输出 normalized confusion matrix；
 - badcase 使用预先固定的选择规则：按错误类型全量输出；报告正文每类按 case id 排序取前 N 条；
@@ -472,6 +533,22 @@ Pilot 不报告 risk-coverage curve：统一 prediction schema 没有跨 B0/B1/L
 可在**单一 baseline 内**增加 selective prediction 分析，同时报告 score 来源；不得把缺失 score 当 0，
 也不得横向比较含义不同的 confidence。
 
+指标计算合同固定为：
+
+- decision Macro-F1 使用固定标签顺序 `in_scope/oos/no_intent/ambiguous`，`zero_division=0`；invalid 只作为
+  prediction 列，使对应 Gold 类产生 false negative，不加入四类宏平均；
+- in-scope intent Macro-F1 只在 Gold=`in_scope` 的 case 上计算，固定包含全部 8 个 intent；预测为拒识、
+  错误 intent 或 invalid 都使 Gold intent 产生 false negative，缺类仍按 `zero_division=0`；
+- near-OOS recall 在 `near_oos` Gold slice 上计算；sibling-ID false-reject rate 在与 near-OOS 共享
+  `contrast_group_id` 且 target 位于其 `near_oos_sibling_intents` 的 in-scope case 上计算；
+- `context_distractor_error_count` 是带 `context_distractor` tag 且 HEM=0 的 Gold case 数；
+  `schema_invalid_count` 是完整 Gold 全集中的 schema-invalid prediction 数；
+- B2b/B3 token 差异按每个模型分别计算：令 `T` 为完整 Gold 全集所有实际调用（包含 retry 和失败调用）的
+  billed input+output token 总和，差异率为 `abs(T_B3-T_B2b) / max(T_B2b, 1)`；任何调用缺 usage metadata
+  都使预算合同无效并判 inconclusive；
+- bootstrap 某次重采样缺少类别时仍使用固定 label set 和 `zero_division=0`。required slice 少于 8 个
+  cluster 时 CI 不可估计，不能用 case-level bootstrap 替代。
+
 人工平衡的合成集适合比较方法，不代表生产类别比例；其 precision、accuracy 与 Activity 发生率不能直接
 外推线上。缓存 prediction 可复算 evaluator，称为“评测可复现”；Provider 模型版本不可完全重放时，
 不能宣称“推理本身完全可复现”。
@@ -479,8 +556,12 @@ Pilot 不报告 risk-coverage curve：统一 prediction schema 没有跨 B0/B1/L
 ### 6.4 双阶段 GO 条件
 
 Pilot 在看 test prediction 前预登记三类结论。所有差值均定义为 `B3 - B2b`，置信区间均为 paired
-`scenario_family/paraphrase_cluster` bootstrap 95% CI `[L, U]`。全局结论只读取预登记的
+`bootstrap_cluster_id` bootstrap 95% CI `[L, U]`。全局结论只读取预登记的
 `primary_decision_model`；弱模型按同一函数单独报告，不参与平均。
+
+进入三态判定前先做 run-integrity gate：freeze/experiment hash 不匹配的请求在 runner 层拒绝；duplicate
+或 extra prediction 在 evaluator 层标为 `invalid_run`，不生成三态 verdict。missing/provider/schema-invalid
+是预期的逐 case 失败，保留在完整 Gold 全集中计错，不会把整个 run 作废。
 
 判定必须实现为下面的**互斥确定函数**，并为边界值写 evaluator 单元测试：
 
@@ -536,38 +617,24 @@ flowchart LR
 
 ### 7.1 建议目录
 
-沿用仓库“实验入口放 `scripts`、活跃评测合同放 `docs/baselines`”的边界。由于它是长期评测工作台而非
-一次性手动 probe，单列 `scripts/intent_eval`，不塞进 `scripts/probes`，也不在 `src/kindred` 建生产包：
+Workbench 已拆成独立仓库，正式 source layout 统一为 `src/intentbench`。本节只展示顶层边界；完整且唯一
+的实施目录以 [implementation-plan.md](implementation-plan.md) §2 为准，不再沿用 Kindred 中的
+`scripts/intent_eval` 或 `docs/baselines`：
 
 ```text
-scripts/intent_eval/
-  run.py
-  schemas.py
-  evaluator.py
-  report.py
-  adapters/
-    rule.py
-    embedding.py
-    llm_one_call.py
-    llm_same_channel_verify.py
-    llm_two_stage.py
-
-docs/baselines/intent-recognition-pilot/
-  README.md
-  taxonomy.yaml
-  annotation-guideline.md
-  dataset-card.md
-  dev.jsonl
-  test.jsonl
-  results/
-    <run-id>/manifest.json
-    <run-id>/predictions.jsonl
-    <run-id>/metrics.json
-    <run-id>/confusion.csv
-    <run-id>/badcases.jsonl
-    <run-id>/report.md
-
-tests/unit/scripts/intent_eval/
+src/intentbench/     # schemas、runner、evaluator、statistics、adapters
+configs/             # taxonomy 与冻结实验合同
+data/kir-pilot-v1/   # dev/test、dataset card、data freeze hashes
+prompts/             # B2a/B2b/B3 versioned prompts
+experiments/
+  <run-id>/
+    manifest.json
+    predictions.jsonl
+    metrics.json
+    confusion.csv
+    badcases.jsonl
+    report.md
+tests/               # unit、contract、offline integration
 ```
 
 ### 7.2 复现合同
@@ -578,6 +645,8 @@ tests/unit/scripts/intent_eval/
 {
   "dataset_version": "kir-pilot-v1",
   "dataset_sha256": "...",
+  "dataset_freeze_sha256": "...",
+  "experiment_lock_sha256": "...",
   "taxonomy_version": "kindred-activity-intents-v1",
   "adapter": "llm_two_stage",
   "adapter_config_sha256": "...",
@@ -608,22 +677,25 @@ tests/unit/scripts/intent_eval/
 
 ## 8. 实施拆分与工作量
 
-### IE0：合同与标注规范（约 1 天）
+### IE0：合同、脚手架与 Provider readiness（约 1.5 天）
 
 - 冻结 taxonomy；
 - 固定意图证据边界、互斥决策树与 case/prediction schema；
 - 写 inclusion/exclusion 与标注指南；
 - 预登记主指标、margin、split、cluster 和版本策略；
-- 固定 B1 prototype 来源/gate 顺序、primary decision model 与三态判定函数，并为边界写测试。
+- 固定 B1 prototype 来源/gate 顺序、primary decision model 与三态判定函数，并为边界写测试；
+- 预选 primary LLM、weak LLM 与 embedding model，固定 adapter、环境变量名和模型 identity；
+- 对每个模型只做 dev-fixture connectivity/structured-output/token-usage smoke，提前发现 Provider 合同问题，
+  不生成 test prediction。
 
-交付：`taxonomy.yaml + annotation-guideline.md + schema tests`。
+交付：`taxonomy + schemas + minimal evaluator/bootstrap/verdict + provider-readiness record + tests`。
 
 ### IE1：Pilot 金标集（2～3 天）
 
 - 完成 dev 48 / test 112；
 - 审查每条 Gold 是否有输入内 decision evidence；`no_intent` 只要求输入足以支持“无当前行动信号”，
   不要求虚构正向 intention evidence；
-- 做 scenario/source/paraphrase cluster 检查；
+- 生成并检查 relationship connected-component、`split_group_id/bootstrap_cluster_id`；
 - 记录 dataset hash 并冻结 test；单人实施默认标为 non-blind frozen test，明确记录限制；
 - 生成 dataset card 与切片覆盖统计。
 
@@ -652,6 +724,7 @@ tests/unit/scripts/intent_eval/
 ### IE4：Pilot 报告与求职材料（1～1.5 天）
 
 - 生成指标表、paired cluster-bootstrap CI、混淆矩阵和 badcase taxonomy；
+- 按冻结 rubric 完成 24-case × primary/weak 的 `semantic-audit.csv`，只作诊断，不进入三态 verdict；
 - 分别报告 primary/弱模型结果，并用冻结函数生成 promising/inconclusive/negative 与成本取舍；
 - 整理一页 README、简历 bullet、5 分钟和 15 分钟项目讲法；
 - 确保 fresh checkout 可复现实验或使用已缓存响应重算报告。
@@ -674,7 +747,7 @@ tests/unit/scripts/intent_eval/
 | Pilot 测试与报告生成 | 约 400～700 行 |
 | Pilot 金标数据 | 160 条 JSONL |
 | Pilot 文件 | 约 14～20 个 |
-| Pilot 有效工作日 | 7～9 天 |
+| Pilot 排期 | 目标 9 个有效工作日；另留 2 天风险缓冲 |
 | IE-V1 完整规模 | 240 条；累计约 12～19 个有效工作日 |
 | 生产风险 | 近零；不进入 `src/kindred` runtime |
 
@@ -812,9 +885,11 @@ Workbench 完成后，根据投递岗位选择一条，不同时展开：
 - 160 条 Gold 均有可审计的输入内 decision evidence，并通过 schema 与 cluster split 检查；
 - B0、B1、B2a、B2b、B3 至少各有一组可复现结果；
 - B1 prototype 来源/数量与 gate 顺序已冻结；primary decision model 已写入 manifest；
+- B2a/B2b/B3 × primary/weak 的预登记矩阵均有 manifest；B2b call-1 已复用对应 B2a cache；
 - B2b/B3 的调用次数、output budget、重试和 repair policy 已对齐，实际总 token 差异已报告；
 - 主指标、切片指标、Pilot cluster-bootstrap CI、延迟成本与 invalid rate 均已报告；
 - confusion matrix 和 badcases 可定位主要失败模式；
+- 24-case × primary/weak semantic-preservation audit 已按冻结 rubric 记录，且没有用于事后调 Prompt；
 - 报告按预注册条件给出 promising/inconclusive/negative，而不是默认双阶段正确；
 - fresh checkout 能用缓存 prediction 重算相同 metrics；
 - 没有生产代码和私密数据变更。

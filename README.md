@@ -1,6 +1,10 @@
 # Kindred Intent Bench
 
-An offline, reproducible workbench for evaluating open-set intent recognition and Activity routing in a stateful Agent.
+An offline evaluation workbench with optional networked model runners for open-set intent recognition and Activity routing
+in a stateful Agent. It evaluates routing when the input already contains observable intent evidence; it does not assign a
+single Gold Activity to spontaneous autonomous choice.
+
+Cached predictions make scoring reproducible. Provider inference itself may not be exactly replayable.
 
 The project is currently in the design phase. It does not read Kindred production data, call live Capabilities, or modify
 the Kindred runtime.
