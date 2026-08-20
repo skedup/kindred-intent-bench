@@ -9,3 +9,6 @@ the Kindred runtime.
 
 See [docs/design.md](docs/design.md) for the task definition, Gold-label contract, baseline matrix, evaluation metrics,
 statistical gates, implementation plan, and portfolio scope.
+
+The executable delivery sequence and acceptance gates are defined in
+[docs/implementation-plan.md](docs/implementation-plan.md).
