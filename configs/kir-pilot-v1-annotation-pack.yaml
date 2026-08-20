@@ -1,0 +1,597 @@
+schema_version: 1
+pack_id: kir-pilot-annotation-v1
+status: approved_for_ie1_authoring
+dataset_version: kir-pilot-v1
+taxonomy_version: kindred-activity-intents-v1
+
+# These are guideline fixtures, not dataset cases: they have no case ID or split.
+decision_examples:
+  # in_scope: three clear positives, three counterexamples, three adjudications
+  - example_id: guide-in-scope-positive-01
+    boundary_decision: in_scope
+    kind: positive
+    context: {state_summary: "我现在想去河边慢慢走一圈。", conversation: [], recent_activities: []}
+    gold:
+      decision: in_scope
+      target_intent: take_a_walk
+      evidence_quote: "想去河边慢慢走一圈"
+      near_oos_sibling_intents: []
+      slots: &slots_now {desired_experience: null, object: null, horizon: now}
+    competing_decisions: []
+    tags: []
+    rationale: 动作和目的明确，且散步由 taxonomy 完整承接。
+  - example_id: guide-in-scope-positive-02
+    boundary_decision: in_scope
+    kind: positive
+    context: {state_summary: "想随手看看别人最近分享的日常。", conversation: [], recent_activities: []}
+    gold:
+      decision: in_scope
+      target_intent: play_xiaohongshu
+      evidence_quote: "看看别人最近分享的日常"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: []
+    tags: [brandless_xhs]
+    rationale: 未出现品牌名，但“浏览他人公开生活分享”完整命中浏览 Activity。
+  - example_id: guide-in-scope-positive-03
+    boundary_decision: in_scope
+    kind: positive
+    context:
+      state_summary: "晚饭时间，人在家里。"
+      conversation:
+        - {role: assistant, content: "外面下雨了。"}
+        - {role: user, content: "那就在家煮碗面吃吧。"}
+      recent_activities: []
+    gold:
+      decision: in_scope
+      target_intent: eat_at_home
+      evidence_quote: "在家煮碗面吃"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: []
+    tags: [multi_turn, context_distractor, rest_eat_confusion]
+    rationale: 对话中的明确行动覆盖天气背景，地点信息排除 dine_out。
+  - example_id: guide-in-scope-negative-01
+    boundary_decision: in_scope
+    kind: negative
+    context: {state_summary: "今天天气很舒服。", conversation: [], recent_activities: []}
+    gold:
+      decision: no_intent
+      target_intent: null
+      evidence_quote: "今天天气很舒服"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: []
+    tags: [context_distractor]
+    rationale: 状态事实不能被推断成散步或其他目录内行动。
+  - example_id: guide-in-scope-negative-02
+    boundary_decision: in_scope
+    kind: negative
+    context: {state_summary: "现在想戴上耳机听一张专辑。", conversation: [], recent_activities: []}
+    gold:
+      decision: oos
+      target_intent: null
+      evidence_quote: "戴上耳机听一张专辑"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: []
+    tags: []
+    rationale: 行动具体，但音乐播放不在冻结 taxonomy 中。
+  - example_id: guide-in-scope-negative-03
+    boundary_decision: in_scope
+    kind: negative
+    context: {state_summary: "想出去一下，散步或找家店坐坐都可以。", conversation: [], recent_activities: []}
+    gold:
+      decision: ambiguous
+      target_intent: null
+      evidence_quote: "散步或找家店坐坐都可以"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: []
+    tags: []
+    rationale: take_a_walk 与 dine_out 都可解释，且没有下一主要行动。
+  - example_id: guide-in-scope-adjudication-01
+    boundary_decision: in_scope
+    kind: adjudication
+    context: {state_summary: "我先下楼走十分钟，回来再吃晚饭。", conversation: [], recent_activities: []}
+    gold:
+      decision: in_scope
+      target_intent: take_a_walk
+      evidence_quote: "先下楼走十分钟"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: [in_scope, ambiguous]
+    tags: []
+    rationale: 两个行动都有，但“先”给出唯一下一行动，所以不标 ambiguous。
+  - example_id: guide-in-scope-adjudication-02
+    boundary_decision: in_scope
+    kind: adjudication
+    context: {state_summary: "有点累，我现在先靠着休息十分钟。", conversation: [], recent_activities: []}
+    gold:
+      decision: in_scope
+      target_intent: rest
+      evidence_quote: "现在先靠着休息十分钟"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: [in_scope, no_intent]
+    tags: [context_distractor]
+    rationale: “累”本身是状态，但后半句已经明确选择休息。
+  - example_id: guide-in-scope-adjudication-03
+    boundary_decision: in_scope
+    kind: adjudication
+    context:
+      state_summary: "刚完成一张画。"
+      conversation:
+        - {role: assistant, content: "接下来呢？"}
+        - {role: user, content: "现在给你发条消息说说这张画。"}
+      recent_activities: [create_picture]
+    gold:
+      decision: in_scope
+      target_intent: reach_out_to_user
+      evidence_quote: "给你发条消息"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: [in_scope, ambiguous]
+    tags: [multi_turn, context_distractor]
+    rationale: 最近创作不等于继续创作；当前明确动作是联系用户。
+
+  # oos
+  - example_id: guide-oos-positive-01
+    boundary_decision: oos
+    kind: positive
+    context: {state_summary: "想打开音乐，安静听一会儿。", conversation: [], recent_activities: []}
+    gold:
+      decision: oos
+      target_intent: null
+      evidence_quote: "打开音乐"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: []
+    tags: []
+    rationale: 有具体可执行动作，但目录没有播放音乐 Activity。
+  - example_id: guide-oos-positive-02
+    boundary_decision: oos
+    kind: positive
+    context: {state_summary: "准备出门骑自行车沿湖转一圈。", conversation: [], recent_activities: []}
+    gold:
+      decision: oos
+      target_intent: null
+      evidence_quote: "骑自行车沿湖转一圈"
+      near_oos_sibling_intents: [take_a_walk]
+      slots: *slots_now
+    competing_decisions: []
+    tags: [near_oos]
+    rationale: 骑行与散步体验相近，但动作不是步行，不能硬映射。
+  - example_id: guide-oos-positive-03
+    boundary_decision: oos
+    kind: positive
+    context: {state_summary: "想把刚拍的照片发成一篇公开帖子。", conversation: [], recent_activities: []}
+    gold:
+      decision: oos
+      target_intent: null
+      evidence_quote: "发成一篇公开帖子"
+      near_oos_sibling_intents: [play_xiaohongshu]
+      slots: *slots_now
+    competing_decisions: []
+    tags: [near_oos]
+    rationale: 发布内容不是浏览公开内容，目录没有发布 Activity。
+  - example_id: guide-oos-negative-01
+    boundary_decision: oos
+    kind: negative
+    context: {state_summary: "现在下楼散散步吧。", conversation: [], recent_activities: []}
+    gold:
+      decision: in_scope
+      target_intent: take_a_walk
+      evidence_quote: "下楼散散步"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: []
+    tags: []
+    rationale: taxonomy 已有完全匹配的散步 Activity，不能标 OOS。
+  - example_id: guide-oos-negative-02
+    boundary_decision: oos
+    kind: negative
+    context: {state_summary: "我现在还没有具体想做的事。", conversation: [], recent_activities: []}
+    gold:
+      decision: no_intent
+      target_intent: null
+      evidence_quote: "还没有具体想做的事"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: []
+    tags: []
+    rationale: 缺少具体动作，不属于目录外的具体意图。
+  - example_id: guide-oos-negative-03
+    boundary_decision: oos
+    kind: negative
+    context: {state_summary: "想做点轻松的事，但还没决定做什么。", conversation: [], recent_activities: []}
+    gold:
+      decision: ambiguous
+      target_intent: null
+      evidence_quote: "还没决定做什么"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: []
+    tags: []
+    rationale: 已有行动倾向但动作不具体，应 abstain 而非判 OOS。
+  - example_id: guide-oos-adjudication-01
+    boundary_decision: oos
+    kind: adjudication
+    context: {state_summary: "想把已有照片裁剪、调色，不创作新图。", conversation: [], recent_activities: []}
+    gold:
+      decision: oos
+      target_intent: null
+      evidence_quote: "已有照片裁剪、调色"
+      near_oos_sibling_intents: [create_picture]
+      slots: *slots_now
+    competing_decisions: [oos, in_scope]
+    tags: [near_oos]
+    rationale: create_picture 限定新视觉作品，编辑已有照片不能勉强纳入。
+  - example_id: guide-oos-adjudication-02
+    boundary_decision: oos
+    kind: adjudication
+    context: {state_summary: "现在想给一位老朋友发消息问候。", conversation: [], recent_activities: []}
+    gold:
+      decision: oos
+      target_intent: null
+      evidence_quote: "给一位老朋友发消息"
+      near_oos_sibling_intents: [reach_out_to_user]
+      slots: *slots_now
+    competing_decisions: [oos, in_scope]
+    tags: [near_oos]
+    rationale: reach_out_to_user 的对象是当前用户，不泛化为联系任意第三方。
+  - example_id: guide-oos-adjudication-03
+    boundary_decision: oos
+    kind: adjudication
+    context: {state_summary: "想在家看一场线上展览直播。", conversation: [], recent_activities: []}
+    gold:
+      decision: oos
+      target_intent: null
+      evidence_quote: "在家看一场线上展览直播"
+      near_oos_sibling_intents: [visit_cultural_place]
+      slots: *slots_now
+    competing_decisions: [oos, in_scope]
+    tags: [near_oos]
+    rationale: visit_cultural_place 要求前往线下场所，线上观看不能纳入。
+
+  # no_intent
+  - example_id: guide-no-intent-positive-01
+    boundary_decision: no_intent
+    kind: positive
+    context: {state_summary: "我现在没有具体想做的事情。", conversation: [], recent_activities: []}
+    gold:
+      decision: no_intent
+      target_intent: null
+      evidence_quote: "没有具体想做的事情"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: []
+    tags: [quiet_control]
+    rationale: 输入明确否定当前行动意图，应保持安静。
+  - example_id: guide-no-intent-positive-02
+    boundary_decision: no_intent
+    kind: positive
+    context: {state_summary: "窗外阳光很好，屋里很安静。", conversation: [], recent_activities: []}
+    gold:
+      decision: no_intent
+      target_intent: null
+      evidence_quote: "窗外阳光很好"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: []
+    tags: [context_distractor, quiet_control]
+    rationale: 环境描述不授权标注者推断散步、休息或其他行动。
+  - example_id: guide-no-intent-positive-03
+    boundary_decision: no_intent
+    kind: positive
+    context: {state_summary: "也许下个月去看那个展，现在没有安排。", conversation: [], recent_activities: []}
+    gold:
+      decision: no_intent
+      target_intent: null
+      evidence_quote: "下个月去看那个展"
+      near_oos_sibling_intents: []
+      slots: &slots_later {desired_experience: null, object: null, horizon: later}
+    competing_decisions: []
+    tags: []
+    rationale: 只有远期愿望，没有现在或下一段行动倾向。
+  - example_id: guide-no-intent-negative-01
+    boundary_decision: no_intent
+    kind: negative
+    context: {state_summary: "我现在想闭眼休息一会儿。", conversation: [], recent_activities: []}
+    gold:
+      decision: in_scope
+      target_intent: rest
+      evidence_quote: "闭眼休息一会儿"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: []
+    tags: []
+    rationale: 已明确选择休息，不能因低行动状态标 no_intent。
+  - example_id: guide-no-intent-negative-02
+    boundary_decision: no_intent
+    kind: negative
+    context: {state_summary: "现在想听半小时播客。", conversation: [], recent_activities: []}
+    gold:
+      decision: oos
+      target_intent: null
+      evidence_quote: "听半小时播客"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: []
+    tags: []
+    rationale: 行动具体，只是 taxonomy 无法承接。
+  - example_id: guide-no-intent-negative-03
+    boundary_decision: no_intent
+    kind: negative
+    context: {state_summary: "想出去，但散步和看展还没决定。", conversation: [], recent_activities: []}
+    gold:
+      decision: ambiguous
+      target_intent: null
+      evidence_quote: "散步和看展还没决定"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: []
+    tags: []
+    rationale: 有当前行动倾向，只是相邻意图无法区分。
+  - example_id: guide-no-intent-adjudication-01
+    boundary_decision: no_intent
+    kind: adjudication
+    context: {state_summary: "有点饿，不过现在不打算吃，也不准备做什么。", conversation: [], recent_activities: []}
+    gold:
+      decision: no_intent
+      target_intent: null
+      evidence_quote: "现在不打算吃"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: [no_intent, in_scope]
+    tags: [rest_eat_confusion]
+    rationale: 饥饿是状态，且输入明确否定吃饭行动。
+  - example_id: guide-no-intent-adjudication-02
+    boundary_decision: no_intent
+    kind: adjudication
+    context: {state_summary: "周末也许去书店，现在先不安排。", conversation: [], recent_activities: []}
+    gold:
+      decision: no_intent
+      target_intent: null
+      evidence_quote: "周末也许去书店"
+      near_oos_sibling_intents: []
+      slots: *slots_later
+    competing_decisions: [no_intent, in_scope]
+    tags: []
+    rationale: later 愿望不是当前 routing 行动。
+  - example_id: guide-no-intent-adjudication-03
+    boundary_decision: no_intent
+    kind: adjudication
+    context: {state_summary: "刚看完一些公开帖子，接下来还没想好。", conversation: [], recent_activities: [play_xiaohongshu]}
+    gold:
+      decision: no_intent
+      target_intent: null
+      evidence_quote: "接下来还没想好"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: [no_intent, in_scope]
+    tags: [context_distractor, quiet_control]
+    rationale: 最近 Activity 不能被复制成下一行动。
+
+  # ambiguous
+  - example_id: guide-ambiguous-positive-01
+    boundary_decision: ambiguous
+    kind: positive
+    context: {state_summary: "想出门，可能散步，也可能找家咖啡馆。", conversation: [], recent_activities: []}
+    gold:
+      decision: ambiguous
+      target_intent: null
+      evidence_quote: "可能散步，也可能找家咖啡馆"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: []
+    tags: []
+    rationale: 两个目录内行动同等可接受，缺少主次。
+  - example_id: guide-ambiguous-positive-02
+    boundary_decision: ambiguous
+    kind: positive
+    context: {state_summary: "有点累也有点饿，想躺下或弄点吃的，还没决定。", conversation: [], recent_activities: []}
+    gold:
+      decision: ambiguous
+      target_intent: null
+      evidence_quote: "想躺下或弄点吃的"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: []
+    tags: [rest_eat_confusion]
+    rationale: rest 与 eat_at_home 都有行动信号，但没有下一主要行动。
+  - example_id: guide-ambiguous-positive-03
+    boundary_decision: ambiguous
+    kind: positive
+    context: {state_summary: "想看看图片，也可能自己画一张，先做哪个都行。", conversation: [], recent_activities: []}
+    gold:
+      decision: ambiguous
+      target_intent: null
+      evidence_quote: "看看图片，也可能自己画一张"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: []
+    tags: []
+    rationale: 浏览与创作是不同 intent，未给出先后。
+  - example_id: guide-ambiguous-negative-01
+    boundary_decision: ambiguous
+    kind: negative
+    context: {state_summary: "先去散步，回来后再看展览信息。", conversation: [], recent_activities: []}
+    gold:
+      decision: in_scope
+      target_intent: take_a_walk
+      evidence_quote: "先去散步"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: []
+    tags: []
+    rationale: 明确先后时只标下一主要行动。
+  - example_id: guide-ambiguous-negative-02
+    boundary_decision: ambiguous
+    kind: negative
+    context: {state_summary: "现在没有特别想做的。", conversation: [], recent_activities: []}
+    gold:
+      decision: no_intent
+      target_intent: null
+      evidence_quote: "没有特别想做的"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: []
+    tags: [quiet_control]
+    rationale: 没有行动倾向，不是多个意图难以区分。
+  - example_id: guide-ambiguous-negative-03
+    boundary_decision: ambiguous
+    kind: negative
+    context: {state_summary: "现在想整理一下房间。", conversation: [], recent_activities: []}
+    gold:
+      decision: oos
+      target_intent: null
+      evidence_quote: "整理一下房间"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: []
+    tags: []
+    rationale: 动作具体且唯一，只是目录外，不应标 ambiguous。
+  - example_id: guide-ambiguous-adjudication-01
+    boundary_decision: ambiguous
+    kind: adjudication
+    context: {state_summary: "想出去走走或者去书店，哪个都行。", conversation: [], recent_activities: []}
+    gold:
+      decision: ambiguous
+      target_intent: null
+      evidence_quote: "出去走走或者去书店"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: [ambiguous, in_scope]
+    tags: []
+    rationale: “出去”不是足够的共同上位标签，两个 Activity 仍不可唯一选择。
+  - example_id: guide-ambiguous-adjudication-02
+    boundary_decision: ambiguous
+    kind: adjudication
+    context: {state_summary: "想在家吃点东西，也想躺下，没想好先哪个。", conversation: [], recent_activities: []}
+    gold:
+      decision: ambiguous
+      target_intent: null
+      evidence_quote: "没想好先哪个"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: [ambiguous, in_scope]
+    tags: [rest_eat_confusion]
+    rationale: 状态强弱不能替代明确的主次证据。
+  - example_id: guide-ambiguous-adjudication-03
+    boundary_decision: ambiguous
+    kind: adjudication
+    context:
+      state_summary: "刚结束上一项活动。"
+      conversation:
+        - {role: assistant, content: "接下来想画点东西，还是看看别人分享？"}
+        - {role: user, content: "两个都可以，还没决定先做哪个。"}
+      recent_activities: [rest]
+    gold:
+      decision: ambiguous
+      target_intent: null
+      evidence_quote: "还没决定先做哪个"
+      near_oos_sibling_intents: []
+      slots: *slots_now
+    competing_decisions: [ambiguous, in_scope]
+    tags: [multi_turn, context_distractor]
+    rationale: 用户接受两个候选但没有排序，不能由最近 Activity 或提问顺序代选。
+
+intent_boundaries:
+  - intent: create_picture
+    annotation_rule: 必须是创作新的视觉作品；浏览或编辑已有内容不算。
+    inclusion_examples:
+      - {text: "想画一张雨夜街景。", expected_decision: in_scope, expected_target_intent: create_picture, rationale: 明确创作新图。}
+      - {text: "把刚才的灵感做成一幅新插画。", expected_decision: in_scope, expected_target_intent: create_picture, rationale: 新视觉作品是下一行动。}
+    exclusion_examples:
+      - {text: "看看别人分享的摄影作品。", expected_decision: in_scope, expected_target_intent: play_xiaohongshu, rationale: 主要动作是浏览公开内容。}
+      - {text: "给已有照片裁剪调色。", expected_decision: oos, expected_target_intent: null, rationale: 编辑已有图不属于新创作。}
+  - intent: dine_out
+    annotation_rule: 必须离开住处并以餐饮场所用餐为主要目的。
+    inclusion_examples:
+      - {text: "去附近餐馆吃晚饭。", expected_decision: in_scope, expected_target_intent: dine_out, rationale: 外出到餐馆用餐。}
+      - {text: "想出门找家咖啡馆喝点东西。", expected_decision: in_scope, expected_target_intent: dine_out, rationale: 餐饮场所是明确目的地。}
+    exclusion_examples:
+      - {text: "留在家点份外卖。", expected_decision: in_scope, expected_target_intent: eat_at_home, rationale: 用餐地点在家。}
+      - {text: "只想下楼走一圈。", expected_decision: in_scope, expected_target_intent: take_a_walk, rationale: 没有用餐目的。}
+  - intent: eat_at_home
+    annotation_rule: 必须明确在当前住处准备、订购或享用食物。
+    inclusion_examples:
+      - {text: "去厨房煮碗面吃。", expected_decision: in_scope, expected_target_intent: eat_at_home, rationale: 在家准备并用餐。}
+      - {text: "今晚不出门，点份外卖吧。", expected_decision: in_scope, expected_target_intent: eat_at_home, rationale: 外卖仍在家用餐。}
+    exclusion_examples:
+      - {text: "去小馆子吃碗面。", expected_decision: in_scope, expected_target_intent: dine_out, rationale: 用餐发生在外部餐馆。}
+      - {text: "有点饿，但没打算吃。", expected_decision: no_intent, expected_target_intent: null, rationale: 饥饿状态不是行动。}
+  - intent: play_xiaohongshu
+    annotation_rule: 主要目的是浏览他人公开生活方式内容，品牌名不是必要条件。
+    inclusion_examples:
+      - {text: "刷一会儿小红书。", expected_decision: in_scope, expected_target_intent: play_xiaohongshu, rationale: 明确浏览平台。}
+      - {text: "随手看看别人最近分享的日常。", expected_decision: in_scope, expected_target_intent: play_xiaohongshu, rationale: 无品牌但语义完整。}
+    exclusion_examples:
+      - {text: "自己画一张新的插画。", expected_decision: in_scope, expected_target_intent: create_picture, rationale: 主要动作是创作。}
+      - {text: "把照片发布成公开帖子。", expected_decision: oos, expected_target_intent: null, rationale: 发布不等于浏览。}
+  - intent: reach_out_to_user
+    annotation_rule: 联系对象必须是当前用户，且主动发起消息或问候。
+    inclusion_examples:
+      - {text: "现在给你发条消息问问近况。", expected_decision: in_scope, expected_target_intent: reach_out_to_user, rationale: 明确主动联系当前用户。}
+      - {text: "想写一句晚安发给你。", expected_decision: in_scope, expected_target_intent: reach_out_to_user, rationale: 对象和动作都明确。}
+    exclusion_examples:
+      - {text: "想起你了，不过先不打扰。", expected_decision: no_intent, expected_target_intent: null, rationale: 明确不执行联系动作。}
+      - {text: "看看陌生人公开分享的近况。", expected_decision: in_scope, expected_target_intent: play_xiaohongshu, rationale: 浏览公开内容而非联系用户。}
+  - intent: rest
+    annotation_rule: 必须主动选择暂停活动、睡眠或安静放松；疲惫事实不够。
+    inclusion_examples:
+      - {text: "现在闭眼睡一会儿。", expected_decision: in_scope, expected_target_intent: rest, rationale: 主动选择睡眠。}
+      - {text: "什么也不做，靠着放松十分钟。", expected_decision: in_scope, expected_target_intent: rest, rationale: 明确选择低行动休息。}
+    exclusion_examples:
+      - {text: "今天有点累。", expected_decision: no_intent, expected_target_intent: null, rationale: 只有状态，没有休息意图。}
+      - {text: "在家吃点热乎的。", expected_decision: in_scope, expected_target_intent: eat_at_home, rationale: 明确动作是用餐。}
+  - intent: take_a_walk
+    annotation_rule: 主要动作必须是步行、透气或随意转转，没有更主要目的地任务。
+    inclusion_examples:
+      - {text: "沿河边慢慢走一圈。", expected_decision: in_scope, expected_target_intent: take_a_walk, rationale: 步行本身是目的。}
+      - {text: "下楼散散步透口气。", expected_decision: in_scope, expected_target_intent: take_a_walk, rationale: 明确散步。}
+    exclusion_examples:
+      - {text: "走去餐馆吃饭。", expected_decision: in_scope, expected_target_intent: dine_out, rationale: 主要目的为外出用餐。}
+      - {text: "步行去博物馆看展。", expected_decision: in_scope, expected_target_intent: visit_cultural_place, rationale: 主要目的为文化场所体验。}
+  - intent: visit_cultural_place
+    annotation_rule: 必须前往线下文化场所，参观或体验是主要目的。
+    inclusion_examples:
+      - {text: "下午去美术馆看展。", expected_decision: in_scope, expected_target_intent: visit_cultural_place, rationale: 明确线下展览目的地。}
+      - {text: "去独立书店里慢慢看看。", expected_decision: in_scope, expected_target_intent: visit_cultural_place, rationale: 书店文化体验是主要行动。}
+    exclusion_examples:
+      - {text: "没有目的地，随便走走。", expected_decision: in_scope, expected_target_intent: take_a_walk, rationale: 步行本身是目的。}
+      - {text: "在家看线上展览直播。", expected_decision: oos, expected_target_intent: null, rationale: 没有前往线下文化场所。}
+
+near_oos_pairs:
+  - {pair_id: near-oos-create-picture-edit, sibling_intent: create_picture, oos_text: "给已有照片裁剪调色。", sibling_in_scope_text: "根据灵感画一幅新插画。", decisive_difference: "编辑既有图像 vs 创作新视觉作品"}
+  - {pair_id: near-oos-dine-out-live-music, sibling_intent: dine_out, oos_text: "去酒吧只听现场乐队，不打算吃喝。", sibling_in_scope_text: "去咖啡馆喝杯咖啡。", decisive_difference: "非餐饮目的 vs 到餐饮场所用餐"}
+  - {pair_id: near-oos-eat-home-kitchen-task, sibling_intent: eat_at_home, oos_text: "在家整理食谱和购物清单，不准备吃。", sibling_in_scope_text: "在家照着食谱做晚饭。", decisive_difference: "厨房相关任务 vs 在家准备并享用食物"}
+  - {pair_id: near-oos-xhs-publish, sibling_intent: play_xiaohongshu, oos_text: "把照片发布成公开帖子。", sibling_in_scope_text: "浏览别人发布的公开帖子。", decisive_difference: "发布自己的内容 vs 浏览他人公开内容"}
+  - {pair_id: near-oos-reach-user-friend, sibling_intent: reach_out_to_user, oos_text: "给一位老朋友发消息。", sibling_in_scope_text: "给当前用户发消息。", decisive_difference: "联系第三方 vs 联系当前用户"}
+  - {pair_id: near-oos-rest-bath, sibling_intent: rest, oos_text: "去洗个热水澡放松。", sibling_in_scope_text: "什么也不做，靠着休息。", decisive_difference: "具体目录外活动 vs 暂停行动休息"}
+  - {pair_id: near-oos-walk-cycle, sibling_intent: take_a_walk, oos_text: "骑自行车沿湖兜风。", sibling_in_scope_text: "沿湖步行一圈。", decisive_difference: "骑行 vs 步行"}
+  - {pair_id: near-oos-cultural-online, sibling_intent: visit_cultural_place, oos_text: "在家看线上展览直播。", sibling_in_scope_text: "去美术馆看线下展览。", decisive_difference: "线上观看 vs 前往线下文化场所"}
+
+required_boundary_tags: [multi_turn, context_distractor, brandless_xhs, rest_eat_confusion]
+
+adjudication:
+  workflow_steps:
+    - 标注者独立按决策树给出 decision、target、evidence_quote 和简短理由。
+    - 对比标签与 evidence；先定位分歧属于行动性、具体性、目录覆盖还是主次顺序。
+    - 只依据冻结 taxonomy 与本规范裁决，不参考模型预测、置信度或期望实验方向。
+    - 无法从输入内形成唯一可审计 Gold 时，修改或排除样本，不以 acceptable_intents 集合放行。
+    - 记录原标签、理由、裁决人和最终 resolution；裁决后才能标记 adjudicated。
+  disagreement_record_fields: [case_id, annotator_id, proposed_label, evidence_quote, rationale, resolution, adjudicator_id]
+  unresolved_action: exclude_from_freeze
+  single_annotator_recheck_min_days: 3
+
+dataset_card:
+  required_disclosures:
+    - synthetic_balanced_dataset
+    - non_blind_frozen_test
+    - no_production_data
+    - single_annotator_limit
+    - llm_assistance_provenance
+    - external_validity_limit
+    - test_access_and_tuning_boundary

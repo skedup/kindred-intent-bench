@@ -8,6 +8,7 @@ from pathlib import Path
 import click
 
 from intentbench import __version__
+from intentbench.annotation import validate_annotation_artifacts
 from intentbench.freeze import FreezeGuardError, verify_test_guard
 from intentbench.providers import (
     READINESS_ROLES,
@@ -45,6 +46,39 @@ def taxonomy_validate(path: Path) -> None:
             sort_keys=True,
         )
     )
+
+
+@main.group("annotations")
+def annotations_group() -> None:
+    """Validate the non-dataset IE1.1 annotation contract."""
+
+
+@annotations_group.command("validate")
+@click.option(
+    "--pack",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=Path("configs/kir-pilot-v1-annotation-pack.yaml"),
+    show_default=True,
+)
+@click.option(
+    "--taxonomy",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=Path("configs/kindred-activity-intents-v1.yaml"),
+    show_default=True,
+)
+@click.option(
+    "--template",
+    "template_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=Path("templates/kir-pilot-v1-case.template.json"),
+    show_default=True,
+)
+def annotations_validate(pack: Path, taxonomy: Path, template_path: Path) -> None:
+    try:
+        report = validate_annotation_artifacts(pack, taxonomy, template_path)
+    except (OSError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(json.dumps(report, ensure_ascii=False, sort_keys=True))
 
 
 @main.group("freeze")

@@ -1,6 +1,6 @@
 # Kindred Intent Bench 实施计划
 
-> Status: `IE0 complete / IE1 not started`
+> Status: `IE0 complete / IE1.1 complete / IE1.2 not started`
 >
 > 日期：2026-08-21
 >
@@ -48,8 +48,11 @@ kindred-intent-bench/
 ├── README.md
 ├── configs/
 │   ├── kindred-activity-intents-v1.yaml
+│   ├── kir-pilot-v1-annotation-pack.yaml
 │   ├── kir-pilot-v1-experiment.yaml
 │   └── provider-readiness.json
+├── templates/
+│   └── kir-pilot-v1-case.template.json
 ├── data/
 │   └── kir-pilot-v1/
 │       ├── dev.jsonl
@@ -62,6 +65,7 @@ kindred-intent-bench/
 │   ├── b2b-same-channel-verifier/
 │   └── b3-evidence-then-grounding/
 ├── src/intentbench/
+│   ├── annotation.py
 │   ├── cli.py
 │   ├── schemas.py
 │   ├── taxonomy.py
@@ -174,11 +178,15 @@ schema、invalid policy、cluster/bootstrap、双 freeze guard 与 verdict 边�
 
 #### IE1.1 标注规范与模板
 
-- 完成 `docs/annotation-guideline.md`；
-- 固定 evidence carrier、四类决策树、near/far OOS、ambiguous 与 no-intent 边界；
-- 固定 `scenario_family_id / contrast_group_id / paraphrase_cluster_id / source` 规则，以及 near-OOS 到
+- [x] 完成 `docs/annotation-guideline.md` 与 36 条非数据集机器示例；
+- [x] 固定 evidence carrier、四类决策树、near/far OOS、ambiguous 与 no-intent 边界；
+- [x] 固定 `scenario_family_id / contrast_group_id / paraphrase_cluster_id / source` 规则，以及 near-OOS 到
   sibling-ID 的关联规则；
-- 建立正例、反例和需要仲裁的示例。
+- [x] 建立四类 decision 的正例、反例、仲裁例，8-intent inclusion/exclusion 和 near-OOS 配对；
+- [x] 建立非数据集编写模板、离线 validator、分歧/仲裁合同和 dataset-card 限制声明。
+
+IE1.1 的 guideline fixtures 使用 `guide-*` ID 且没有 case/split 身份，不计入 IE1.2 的 160 条 Gold。
+执行 `uv run intentbench annotations validate` 可离线验证标注资产与 taxonomy 的一致性。
 
 #### IE1.2 编写与复核数据
 

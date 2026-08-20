@@ -4,8 +4,8 @@ Kindred Intent Bench 是一个离线优先的 open-set intent recognition Workbe
 在输入已经包含可观察意图证据时，能否把下一行动正确路由到 Activity taxonomy，同时显式处理
 `oos / no_intent / ambiguous`。
 
-它不替 Kindred 决定“应该想做什么”，也不把自主选择分布是否均匀当作正确性指标。当前 IE0 只建立评测
-合同与工程门禁：没有编写 160-case Gold、没有运行 frozen test，也没有接入 Kindred 生产路径。
+它不替 Kindred 决定“应该想做什么”，也不把自主选择分布是否均匀当作正确性指标。当前已完成 IE0 工程
+合同和 IE1.1 标注合同；仍没有编写 160-case Gold、没有运行 frozen test，也没有接入 Kindred 生产路径。
 
 ## IE0 已实现
 
@@ -18,6 +18,16 @@ Kindred Intent Bench 是一个离线优先的 open-set intent recognition Workbe
 - dataset freeze + experiment lock 双冻结 guard；
 - B1 embedding prototype/actionability/OOS/ambiguity 公式与确定性阈值 tie-break；
 - synthetic-only Provider readiness，不保存密钥或原始响应。
+
+## IE1.1 已实现
+
+- 四类 decision 各 3 个正例、3 个反例、3 个仲裁例，共 36 条非数据集 guideline fixtures；
+- 8 个 intent 的 inclusion/exclusion 对照，以及每个 intent 一组 near-OOS/sibling 配对；
+- multi-turn、context-distractor、brandless XHS、rest/eat confusion 的明确标注边界；
+- 标注分歧、仲裁、单标注者重检和 dataset-card 七项强制披露合同；
+- 带防误用 wrapper 的 case 编写模板，以及 taxonomy 对齐的离线 validator。
+
+这些资产只用于指导 IE1.2 人工编写与复核，不是正式数据集，也没有 case/split 身份。
 
 预注册采用三 Provider、七运行产物矩阵：`gemini-3.6-flash` 是 primary，完整运行
 `B2a/B2b/B3`，且是唯一全局 verdict authority；`deepseek-v4-flash` 是低成本弱模型复现，
@@ -35,6 +45,7 @@ uv run ruff check .
 uv run mypy src
 uv run pytest
 uv run intentbench taxonomy validate configs/kindred-activity-intents-v1.yaml
+uv run intentbench annotations validate
 ```
 
 以上命令不访问 LLM/embedding Provider。正式 test runner 后续必须通过双冻结 guard；当前 experiment
@@ -74,5 +85,5 @@ identity、usage、延迟、环境标签、向量维度与 raw-response SHA-256�
 证据；四个角色必须恰好各出现一次。单条 fixture 命中只表示接口就绪，不是效果结果。
 
 完整任务定义见 [设计文档](docs/design.md)，阶段与 Exit Gate 见
-[实施计划](docs/implementation-plan.md)，IE1 标注前置规则见
-[标注规范骨架](docs/annotation-guideline.md)。
+[实施计划](docs/implementation-plan.md)，IE1 标注规则与示例见
+[标注规范](docs/annotation-guideline.md)。
