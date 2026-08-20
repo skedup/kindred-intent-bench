@@ -60,6 +60,8 @@ uv run intentbench providers check \
   --environment-label mac-kindred-runtime-config
 
 uv run intentbench providers merge \
+  --fixture tests/fixtures/provider-smoke.json \
+  --config configs/kir-pilot-v1-experiment.yaml \
   --input .provider-cache/google.json \
   --input .provider-cache/cross-provider.json \
   --output configs/provider-readiness.json
@@ -67,9 +69,9 @@ uv run intentbench providers merge \
 
 运行前由操作者在对应环境安全加载配置中的环境变量；命令行和仓库都不写 key。已提交的合并记录中，
 Gemini/embedding 来自用户授权的美国 Linux，DeepSeek/OpenAI 来自 Kindred 的 Mac 运行配置，仅包含
-identity、usage、延迟、环境标签、向量维度与 raw-response SHA-256；不包含 key 或响应正文。合并器要求
-所有 partial 使用相同 experiment/fixture hash 且四个角色恰好各出现一次。单条 fixture 命中只表示接口就绪，
-不是效果结果。
+identity、usage、延迟、环境标签、向量维度与 raw-response SHA-256；不包含 key 或响应正文。合并器重新计算
+当前 experiment/fixture hash，并逐角色核对 model、adapter、arms、verdict authority、结构化输出和 usage
+证据；四个角色必须恰好各出现一次。单条 fixture 命中只表示接口就绪，不是效果结果。
 
 完整任务定义见 [设计文档](docs/design.md)，阶段与 Exit Gate 见
 [实施计划](docs/implementation-plan.md)，IE1 标注前置规则见

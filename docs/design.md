@@ -473,8 +473,9 @@ OpenAI 的 B2b call-1 仍须使用与 one-stage 基线相同的调用合同和�
 
 模型选择不能推迟到正式运行：IE0 必须登记三个 LLM 角色、embedding model、各自 adapter、结构化输出
 模式、环境变量名、超时、生成参数和预期 usage metadata，并分别用单条 synthetic dev fixture 完成
-connectivity、identity、结构化输出、超时和 token-usage smoke。若凭据分布在不同运行环境，可生成带同一
-experiment/fixture hash 的 partial readiness records，再用机器校验合并；四个角色必须恰好各出现一次。
+connectivity、identity、结构化输出、超时和 token-usage smoke。若凭据分布在不同运行环境，可生成 partial
+readiness records；合并时必须重新计算当前 experiment/fixture hash，并按当前配置核对每个角色的模型、
+adapter、arms、verdict authority、结构化输出与 usage 证据；四个角色必须恰好各出现一次。
 IE3 的机器 Exit Gate 要求表中的七个 LLM run 全部有匹配 manifest；B0/B1 各运行一次，不进入 LLM 矩阵。
 
 本次 IE0 以 Kindred/OpenClaw `agent:main:main` 运行时元数据作为 primary authority，以 Kindred 运行配置
@@ -537,10 +538,10 @@ Hugging Face 训练、GPU 环境、公共数据适配和生产 runtime。
 | tokens / estimated cost | 效果提升是否值得成本 |
 
 Pilot 的 24 条 semantic-preservation audit 保留为**诊断项，不进入三态 verdict**。slice IDs 在 test 前冻结；
-对 B3 的 primary/weak/cross-provider-reference 三个模型分别审查，共 72 行记录。人工 rubric 只检查
-`action/object/horizon` 三项，分别记 `preserved/partial/lost`，结果写入
-`semantic-audit.csv`。它不计算 slot F1，也不能用于事后调 Prompt。保留它是为了验证 B3 阶段 A 没有在
-自由文本表示中丢失关键语义，而不是为了把 Pilot 扩成 slot-filling 项目。
+只对 B3 的 primary 与 weak 两个模型分别审查，共 48 行记录。人工 rubric 只检查
+`action/object/horizon` 三项，分别记 `preserved/partial/lost`，结果写入 `semantic-audit.csv`。OpenAI
+cross-provider-reference 只保留自动 B2b/B3 指标，不增加人工审查。该审计不计算 slot F1，也不能用于事后
+调 Prompt；它用于验证主模型和低性能模型的 B3 阶段 A 是否丢失关键语义，而不是扩成 slot-filling 项目。
 
 ### 6.3 比较方式
 
@@ -749,7 +750,8 @@ tests/               # unit、contract、offline integration
 ### IE4：Pilot 报告与求职材料（1～1.5 天）
 
 - 生成指标表、paired cluster-bootstrap CI、混淆矩阵和 badcase taxonomy；
-- 按冻结 rubric 完成 24-case × 三个 LLM 角色的 `semantic-audit.csv`，只作诊断，不进入三态 verdict；
+- 按冻结 rubric 完成 24-case × primary/weak 的 `semantic-audit.csv`，共 48 行，只作诊断，不进入三态
+  verdict；OpenAI reference 只报告自动指标；
 - 分别报告 primary/weak/cross-provider-reference 结果，并用冻结函数生成各自的
   promising/inconclusive/negative 与成本取舍；全局结论只读取 primary；
 - 整理一页 README、简历 bullet、5 分钟和 15 分钟项目讲法；
@@ -916,8 +918,8 @@ Workbench 完成后，根据投递岗位选择一条，不同时展开：
 - B2b/B3 的调用次数、output budget、重试和 repair policy 已对齐，实际总 token 差异已报告；
 - 主指标、切片指标、Pilot cluster-bootstrap CI、延迟成本与 invalid rate 均已报告；
 - confusion matrix 和 badcases 可定位主要失败模式；
-- 24-case × 三个 LLM 角色的 semantic-preservation audit 已按冻结 rubric 记录，共 72 行，且没有用于
-  事后调 Prompt；
+- 24-case × primary/weak 的 semantic-preservation audit 已按冻结 rubric 记录，共 48 行，且没有用于
+  事后调 Prompt；OpenAI reference 不增加人工 audit；
 - 报告按预注册条件给出 promising/inconclusive/negative，而不是默认双阶段正确；
 - fresh checkout 能用缓存 prediction 重算相同 metrics；
 - 没有生产代码和私密数据变更。

@@ -151,7 +151,8 @@ flowchart LR
   model、各自 adapter、结构化输出模式和环境变量名；
 - 每个模型只使用单条 synthetic dev fixture 验证连接、超时、结构化输出和 identity；
 - LLM smoke 必须确认 input/output token usage 可得；缺失时在进入 IE1 前更换 adapter 或明确预算合同不可行；
-- 凭据跨环境时输出带相同 experiment/fixture hash 的 partial records，合并器校验四个角色无缺失、无重复；
+- 凭据跨环境时输出 partial records；合并器重新计算当前 experiment/fixture hash，逐角色核对模型合同，
+  并校验四个角色无缺失、无重复；
 - 输出不含 secret 的 `configs/provider-readiness.json`；不生成 test prediction，不做效果判断。
 
 **Exit gate IE0**
@@ -163,7 +164,7 @@ uv run mypy src
 uv run pytest
 uv run intentbench taxonomy validate configs/kindred-activity-intents-v1.yaml
 uv run intentbench providers check --role <role> --fixture tests/fixtures/provider-smoke.json
-uv run intentbench providers merge --input <partial> --input <partial>
+uv run intentbench providers merge --config <experiment> --fixture <fixture> --input <partial> --input <partial>
 ```
 
 前四项完全离线并全部通过；Provider check 是显式手动 smoke，成功结果只记录 capability/usage metadata。
@@ -282,9 +283,9 @@ schema、invalid policy、cluster/bootstrap、双 freeze guard 与 verdict 边�
 #### IE4.1 自动报告
 
 - 输出 metrics、95% paired cluster-bootstrap CI、confusion、badcases、latency/token/cost；
-- 对预冻结的 24 条 slice，在 B3 三个 LLM 角色上按 `action/object/horizon` rubric 记录
-  `preserved/partial/lost`，共 72 行，生成
-  `semantic-audit.csv`；该结果只作诊断，不进入三态 verdict，也不用于回调 Prompt；
+- 对预冻结的 24 条 slice，在 B3 primary/weak 上按 `action/object/horizon` rubric 记录
+  `preserved/partial/lost`，共 48 行，生成 `semantic-audit.csv`；OpenAI reference 只保留自动指标；
+  人工结果只作诊断，不进入三态 verdict，也不用于回调 Prompt；
 - primary、weak 与 cross-provider-reference 分别报告，不平均、不投票；
 - evaluator 按有效性 → negative → statistical inconclusive → promising 的冻结顺序生成结论；
 - 所有表格由结构化结果生成，README 不手填与缓存不一致的数字。
@@ -301,7 +302,8 @@ schema、invalid policy、cluster/bootstrap、双 freeze guard 与 verdict 边�
 - fresh clone 能安装并执行离线门检；
 - 使用已缓存 prediction 能重算完全相同的结构化指标和 verdict；
 - 160-case 数据、五个 baseline、三 LLM 角色、CI、badcase、延迟与成本均有可审计产物；
-- 24-case × 三个 LLM 角色的 semantic-preservation audit 有冻结 IDs、rubric 和 72 行记录；
+- 24-case × primary/weak 的 semantic-preservation audit 有冻结 IDs、rubric 和 48 行记录；OpenAI
+  reference 不增加人工 audit；
 - 仓库不包含 secret、生产数据或对 Kindred 的运行时依赖；
 - 报告明确说明 synthetic、balanced、non-blind portfolio pilot 的外推限制。
 

@@ -147,6 +147,19 @@ def providers_check(
 
 @providers_group.command("merge")
 @click.option(
+    "--fixture",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=Path("tests/fixtures/provider-smoke.json"),
+    show_default=True,
+)
+@click.option(
+    "--config",
+    "experiment_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=Path("configs/kir-pilot-v1-experiment.yaml"),
+    show_default=True,
+)
+@click.option(
     "--input",
     "input_paths",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
@@ -160,9 +173,18 @@ def providers_check(
     default=Path("configs/provider-readiness.json"),
     show_default=True,
 )
-def providers_merge(input_paths: tuple[Path, ...], output: Path) -> None:
+def providers_merge(
+    fixture: Path,
+    experiment_path: Path,
+    input_paths: tuple[Path, ...],
+    output: Path,
+) -> None:
     try:
-        record = merge_provider_readiness([load_readiness_record(path) for path in input_paths])
+        record = merge_provider_readiness(
+            [load_readiness_record(path) for path in input_paths],
+            experiment_path=experiment_path,
+            fixture_path=fixture,
+        )
     except (OSError, json.JSONDecodeError, ValueError) as exc:
         raise click.ClickException(str(exc)) from exc
     write_readiness_record(record, output)

@@ -8,7 +8,7 @@ import platform
 from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import yaml
 from pydantic import Field, model_validator
@@ -31,6 +31,7 @@ READINESS_ROLES: tuple[ReadinessRole, ...] = (
     "cross_provider_reference",
     "embedding",
 )
+READINESS_SECRET_POLICY = "environment_variable_name_only; no secret or raw response persisted"
 
 
 class LLMModelSpec(StrictModel):
@@ -387,63 +388,204 @@ def run_provider_readiness(
         "model_authority": models.authority,
         "required_roles": list(READINESS_ROLES),
         "selected_roles": list(roles),
-        "secret_policy": "environment_variable_name_only; no secret or raw response persisted",
+        "secret_policy": READINESS_SECRET_POLICY,
         "results": results,
     }
 
 
-def merge_provider_readiness(records: Sequence[dict[str, Any]]) -> dict[str, Any]:
+def _validate_sha256(value: Any, *, field: str) -> None:
+    if not isinstance(value, str) or len(value) != 64:
+        raise ValueError(f"readiness {field} must be a SHA-256 hex digest")
+    try:
+        int(value, 16)
+    except ValueError as exc:
+        raise ValueError(f"readiness {field} must be a SHA-256 hex digest") from exc
+
+
+def _validate_non_negative_number(value: Any, *, field: str) -> None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
+        raise ValueError(f"readiness {field} must be a non-negative number")
+
+
+def _validate_passed_result(
+    role: ReadinessRole,
+    result: dict[str, Any],
+    spec: LLMModelSpec | EmbeddingModelSpec,
+) -> None:
+    expected_common = {
+        "role": role,
+        "provider": spec.provider,
+        "adapter": spec.adapter,
+        "requested_model": spec.model,
+        "status": "passed",
+    }
+    for field, expected in expected_common.items():
+        if result.get(field) != expected:
+            raise ValueError(f"readiness {role} result disagrees on {field}")
+    if (
+        not isinstance(result.get("execution_environment"), str)
+        or not result["execution_environment"]
+    ):
+        raise ValueError(f"readiness {role} lacks execution_environment")
+    runtime = result.get("runtime")
+    if not isinstance(runtime, dict) or not all(
+        isinstance(runtime.get(field), str) and runtime[field] for field in ("system", "machine")
+    ):
+        raise ValueError(f"readiness {role} lacks runtime identity")
+    _validate_non_negative_number(result.get("latency_ms"), field=f"{role}.latency_ms")
+    _validate_sha256(result.get("raw_response_sha256"), field=f"{role}.raw_response_sha256")
+
+    if isinstance(spec, EmbeddingModelSpec):
+        expected_embedding: dict[str, Any] = {
+            "reported_model": None,
+            "identity_evidence": "model_specific_request_endpoint",
+            "identity_reported_by_provider": False,
+            "connectivity": True,
+            "finite_vector": True,
+            "dimension": spec.expected_dimension,
+            "expected_dimension": spec.expected_dimension,
+            "dimension_match": True,
+        }
+        for field, expected in expected_embedding.items():
+            if result.get(field) != expected:
+                raise ValueError(f"readiness embedding result disagrees on {field}")
+        return
+
+    expected_llm: dict[str, Any] = {
+        "required_arms": spec.required_arms,
+        "verdict_authority": spec.verdict_authority,
+        "connectivity": True,
+        "structured_output_valid": True,
+        "structured_output_mode": spec.structured_output_mode,
+        "structured_output_contract_match": True,
+        "fixture_expectation_match": True,
+        "identity_match": True,
+        "usage_available": True,
+        "usage_contract_match": True,
+    }
+    for field, expected in expected_llm.items():
+        if result.get(field) != expected:
+            raise ValueError(f"readiness {role} result disagrees on {field}")
+    reported_model = result.get("reported_model")
+    if not isinstance(reported_model, str) or reported_model.removeprefix("models/") != spec.model:
+        raise ValueError(f"readiness {role} reported_model does not match the config")
+    for field in ("input_tokens", "output_tokens", "total_tokens"):
+        _validate_non_negative_number(result.get(field), field=f"{role}.{field}")
+    if result["total_tokens"] != result["input_tokens"] + result["output_tokens"]:
+        raise ValueError(f"readiness {role} token totals are inconsistent")
+    usage_fields = result.get("provider_usage_fields")
+    if not isinstance(usage_fields, list) or not all(
+        isinstance(field, str) for field in usage_fields
+    ):
+        raise ValueError(f"readiness {role} provider_usage_fields are invalid")
+    if not set(spec.expected_usage_fields).issubset(usage_fields):
+        raise ValueError(f"readiness {role} lacks configured usage fields")
+
+
+def _validate_partial_record(
+    record: dict[str, Any],
+    *,
+    models: ReadinessModels,
+    fixture: ReadinessFixture,
+    experiment_config_sha256: str,
+    fixture_sha256: str,
+) -> datetime:
+    expected_top_level = {
+        "schema_version": 2,
+        "record_kind": "provider_readiness_partial",
+        "status": "passed",
+        "fixture_id": fixture.fixture_id,
+        "fixture_scope": "synthetic_dev_only",
+        "fixture_sha256": fixture_sha256,
+        "experiment_config_sha256": experiment_config_sha256,
+        "model_authority": models.authority,
+        "required_roles": list(READINESS_ROLES),
+        "secret_policy": READINESS_SECRET_POLICY,
+    }
+    for field, expected in expected_top_level.items():
+        if record.get(field) != expected:
+            raise ValueError(f"readiness partial disagrees with current {field}")
+    checked_at_raw = record.get("checked_at")
+    if not isinstance(checked_at_raw, str):
+        raise ValueError("readiness partial lacks checked_at")
+    try:
+        checked_at = datetime.fromisoformat(checked_at_raw)
+    except ValueError as exc:
+        raise ValueError("readiness partial checked_at is not ISO-8601") from exc
+    if checked_at.tzinfo is None or checked_at.utcoffset() is None:
+        raise ValueError("readiness partial checked_at must include a timezone")
+
+    selected_roles = record.get("selected_roles")
+    results = record.get("results")
+    if not isinstance(selected_roles, list) or not selected_roles:
+        raise ValueError("readiness partial must select at least one role")
+    if len(selected_roles) != len(set(selected_roles)):
+        raise ValueError("readiness partial selected_roles must be unique")
+    if not isinstance(results, list) or len(results) != len(selected_roles):
+        raise ValueError("readiness partial results do not match selected_roles")
+    role_specs = _role_specs(models)
+    for selected_role, result in zip(selected_roles, results, strict=True):
+        if selected_role not in READINESS_ROLES:
+            raise ValueError(f"readiness partial has unknown role: {selected_role}")
+        if not isinstance(result, dict):
+            raise ValueError(f"readiness {selected_role} result must be an object")
+        role = cast(ReadinessRole, selected_role)
+        _validate_passed_result(role, result, role_specs[role])
+    return checked_at
+
+
+def merge_provider_readiness(
+    records: Sequence[dict[str, Any]],
+    *,
+    experiment_path: Path,
+    fixture_path: Path,
+) -> dict[str, Any]:
     if not records:
         raise ValueError("at least one readiness record is required")
-    identity_fields = (
-        "fixture_id",
-        "fixture_scope",
-        "fixture_sha256",
-        "experiment_config_sha256",
-        "model_authority",
-        "required_roles",
-    )
-    first = records[0]
+    models, fixture = load_readiness_inputs(experiment_path, fixture_path)
+    experiment_config_sha256 = sha256_file(experiment_path)
+    fixture_sha256 = sha256_file(fixture_path)
+    checked_at_values: list[datetime] = []
     for record in records:
-        if record.get("schema_version") != 2:
-            raise ValueError("all readiness records must use schema_version=2")
-        if record.get("required_roles") != list(READINESS_ROLES):
-            raise ValueError("readiness record has an unknown required_roles contract")
-        for field in identity_fields:
-            if record.get(field) != first.get(field):
-                raise ValueError(f"readiness records disagree on {field}")
-        selected_roles = record.get("selected_roles")
-        result_roles = [result.get("role") for result in record.get("results", [])]
-        if selected_roles != result_roles:
-            raise ValueError("readiness selected_roles do not match result roles")
+        checked_at_values.append(
+            _validate_partial_record(
+                record,
+                models=models,
+                fixture=fixture,
+                experiment_config_sha256=experiment_config_sha256,
+                fixture_sha256=fixture_sha256,
+            )
+        )
     results: list[dict[str, Any]] = []
     seen_roles: set[str] = set()
     for record in records:
-        for result in record.get("results", []):
-            role = result.get("role")
-            if not isinstance(role, str):
-                raise ValueError("readiness result lacks role")
+        for result in record["results"]:
+            role = result["role"]
             if role in seen_roles:
                 raise ValueError(f"duplicate readiness role: {role}")
             seen_roles.add(role)
             results.append(result)
-    required_roles = set(first["required_roles"])
+    required_roles = set(READINESS_ROLES)
     if seen_roles != required_roles:
         raise ValueError(
             f"readiness roles incomplete: missing={sorted(required_roles - seen_roles)} "
             f"extra={sorted(seen_roles - required_roles)}"
         )
-    role_order = {role: index for index, role in enumerate(first["required_roles"])}
+    role_order = {role: index for index, role in enumerate(READINESS_ROLES)}
     results.sort(key=lambda result: role_order[result["role"]])
-    checked_at = max(str(record["checked_at"]) for record in records)
     return {
         "schema_version": 2,
         "record_kind": "provider_readiness",
-        "status": "passed" if all(result["status"] == "passed" for result in results) else "failed",
-        "checked_at": checked_at,
-        **{field: first[field] for field in identity_fields},
-        "selected_roles": list(first["required_roles"]),
-        "secret_policy": first["secret_policy"],
+        "status": "passed",
+        "checked_at": max(checked_at_values).isoformat(),
+        "fixture_id": fixture.fixture_id,
+        "fixture_scope": "synthetic_dev_only",
+        "fixture_sha256": fixture_sha256,
+        "experiment_config_sha256": experiment_config_sha256,
+        "model_authority": models.authority,
+        "required_roles": list(READINESS_ROLES),
+        "selected_roles": list(READINESS_ROLES),
+        "secret_policy": READINESS_SECRET_POLICY,
         "results": results,
     }
 

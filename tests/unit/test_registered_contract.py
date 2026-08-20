@@ -14,7 +14,7 @@ from intentbench.bootstrap import (
     CONFIDENCE_LEVEL,
     MIN_CLUSTERS,
 )
-from intentbench.freeze import ExperimentLock
+from intentbench.freeze import ExperimentLock, sha256_file
 from intentbench.providers import ReadinessModels, load_readiness_inputs
 
 EXPERIMENT_PATH = Path("configs/kir-pilot-v1-experiment.yaml")
@@ -66,6 +66,8 @@ def test_selected_models_and_safe_readiness_record_are_consistent() -> None:
     readiness = json.loads(readiness_text)
     assert readiness["schema_version"] == 2
     assert readiness["status"] == "passed"
+    assert readiness["experiment_config_sha256"] == sha256_file(EXPERIMENT_PATH)
+    assert readiness["fixture_sha256"] == sha256_file(FIXTURE_PATH)
     assert readiness["selected_roles"] == [
         "primary_decision",
         "weak_decision",
