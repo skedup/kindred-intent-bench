@@ -1,6 +1,6 @@
 # Kindred Intent Bench 实施计划
 
-> Status: `IE0 complete / IE1.1 complete / IE1.2 not started`
+> Status: `IE0 complete / IE1.1 complete / IE1.2 candidates ready, human review pending`
 >
 > 日期：2026-08-21
 >
@@ -55,6 +55,8 @@ kindred-intent-bench/
 │   └── kir-pilot-v1-case.template.json
 ├── data/
 │   └── kir-pilot-v1/
+│       ├── candidates.jsonl
+│       ├── candidate-card.md
 │       ├── dev.jsonl
 │       ├── test.jsonl
 │       ├── dataset-card.md
@@ -190,15 +192,20 @@ IE1.1 的 guideline fixtures 使用 `guide-*` ID 且没有 case/split 身份，�
 
 #### IE1.2 编写与复核数据
 
-- `in_scope=80`：8 intents × 10；
-- `oos=32`：far 16 + near 16；
-- `no_intent=24`；
-- `ambiguous=24`；
-- 满足 multi-turn、hard-negative、context-distractor、weak-model trap、brandless XHS、rest/eat confusion
+- [x] 建立 160 条 pre-split 候选：`in_scope=80`（8 intents × 10）；
+- [x] `oos=32`：far 16 + near 16；
+- [x] `no_intent=24`、`ambiguous=24`；
+- [x] 满足 multi-turn、hard-negative、context-distractor、weak-model trap、brandless XHS、rest/eat confusion
   的最低覆盖。
+- [ ] 人工逐条复核 decision、target、evidence、slots、tags 和关系 ID；
+- [ ] 修订后写入真实 annotator/reviewer provenance，并将同意项从 pending draft materialize 为正式 Case。
 
 每条 Gold 必须能从输入内审计 decision evidence；`gold.evidence_quote` 不传给 baseline。所有内容使用合成
 或人工脱敏场景，不拷贝生产 State/Thought。
+
+当前 `data/kir-pilot-v1/candidates.jsonl` 明确是 `llm_assisted_pending_human_review`，不是正式 Gold；执行
+`uv run intentbench dataset candidates validate` 只证明 schema、分布、切片和关系合同成立。人工复核未完成前
+不得进入 IE1.3 split/freeze。
 
 #### IE1.3 Group split 与冻结
 

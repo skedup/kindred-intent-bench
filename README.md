@@ -5,7 +5,8 @@ Kindred Intent Bench 是一个离线优先的 open-set intent recognition Workbe
 `oos / no_intent / ambiguous`。
 
 它不替 Kindred 决定“应该想做什么”，也不把自主选择分布是否均匀当作正确性指标。当前已完成 IE0 工程
-合同和 IE1.1 标注合同；仍没有编写 160-case Gold、没有运行 frozen test，也没有接入 Kindred 生产路径。
+合同和 IE1.1 标注合同。IE1.2 已建立 160-case 人工复核候选队列，但它仍是 pending draft，不是正式
+Gold；仓库没有运行 frozen test，也没有接入 Kindred 生产路径。
 
 ## IE0 已实现
 
@@ -29,6 +30,15 @@ Kindred Intent Bench 是一个离线优先的 open-set intent recognition Workbe
 
 这些资产只用于指导 IE1.2 人工编写与复核，不是正式数据集，也没有 case/split 身份。
 
+## IE1.2 候选队列
+
+[候选数据卡](data/kir-pilot-v1/candidate-card.md)和 `candidates.jsonl` 已提供完整的 160 条审阅队列：
+`in_scope=80 / oos=32 / no_intent=24 / ambiguous=24`，并满足 8-intent、near/far OOS 和横切标签覆盖。
+
+这些记录统一使用 `llm_assisted_pending_human_review + draft`，不含 split 或生成 cluster ID，不能通过正式
+`Case` schema。只有人工逐条确认、修订 provenance 后，才允许进入 IE1.3 materialization、group split 和
+freeze。
+
 预注册采用三 Provider、七运行产物矩阵：`gemini-3.6-flash` 是 primary，完整运行
 `B2a/B2b/B3`，且是唯一全局 verdict authority；`deepseek-v4-flash` 是低成本弱模型复现，
 `gpt-5.6-luna` 是跨 Provider 参考复现，二者只运行 `B2b/B3` 并各自比较 `B3-B2b`，不跨模型平均、
@@ -46,6 +56,7 @@ uv run mypy src
 uv run pytest
 uv run intentbench taxonomy validate configs/kindred-activity-intents-v1.yaml
 uv run intentbench annotations validate
+uv run intentbench dataset candidates validate
 ```
 
 以上命令不访问 LLM/embedding Provider。正式 test runner 后续必须通过双冻结 guard；当前 experiment

@@ -350,7 +350,11 @@ class DraftCase(StrictModel):
     scenario_family_id: str = Field(min_length=1)
     contrast_group_id: str = Field(min_length=1)
     paraphrase_cluster_id: str = Field(min_length=1)
-    source: Literal["human_authored", "llm_assisted_human_reviewed"]
+    source: Literal[
+        "human_authored",
+        "llm_assisted_pending_human_review",
+        "llm_assisted_human_reviewed",
+    ]
     annotator_id: str = Field(min_length=1)
     adjudication_status: Literal["draft", "reviewed", "adjudicated"]
     annotation_note: str = Field(min_length=1)

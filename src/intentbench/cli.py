@@ -9,6 +9,7 @@ import click
 
 from intentbench import __version__
 from intentbench.annotation import validate_annotation_artifacts
+from intentbench.dataset import CandidateDatasetError, validate_candidate_artifact
 from intentbench.freeze import FreezeGuardError, verify_test_guard
 from intentbench.providers import (
     READINESS_ROLES,
@@ -77,6 +78,39 @@ def annotations_validate(pack: Path, taxonomy: Path, template_path: Path) -> Non
     try:
         report = validate_annotation_artifacts(pack, taxonomy, template_path)
     except (OSError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(json.dumps(report, ensure_ascii=False, sort_keys=True))
+
+
+@main.group("dataset")
+def dataset_group() -> None:
+    """Validate pre-split candidate data and later frozen datasets."""
+
+
+@dataset_group.group("candidates")
+def dataset_candidates_group() -> None:
+    """Inspect IE1.2 candidates that still require human review."""
+
+
+@dataset_candidates_group.command("validate")
+@click.option(
+    "--cases",
+    "cases_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=Path("data/kir-pilot-v1/candidates.jsonl"),
+    show_default=True,
+)
+@click.option(
+    "--taxonomy",
+    "taxonomy_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=Path("configs/kindred-activity-intents-v1.yaml"),
+    show_default=True,
+)
+def dataset_candidates_validate(cases_path: Path, taxonomy_path: Path) -> None:
+    try:
+        report = validate_candidate_artifact(cases_path, taxonomy_path)
+    except (OSError, CandidateDatasetError, ValueError) as exc:
         raise click.ClickException(str(exc)) from exc
     click.echo(json.dumps(report, ensure_ascii=False, sort_keys=True))
 
