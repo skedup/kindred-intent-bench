@@ -19,9 +19,10 @@ Kindred Intent Bench 是一个离线优先的 open-set intent recognition Workbe
 - B1 embedding prototype/actionability/OOS/ambiguity 公式与确定性阈值 tie-break；
 - synthetic-only Provider readiness，不保存密钥或原始响应。
 
-预注册模型以 Kindred/OpenClaw `agent:main:main` 运行时元数据为权威：primary 是
-`gemini-3.6-flash`，weak 是同 Provider 的 `gemini-3.5-flash`，embedding 是
-`gemini-embedding-001`。Kindred 可用的 Grok、DeepSeek、OpenAI 候选只登记、不在 IE0 扩成模型横评。
+预注册采用三 Provider、七运行产物矩阵：`gemini-3.6-flash` 是 primary，完整运行
+`B2a/B2b/B3`，且是唯一全局 verdict authority；`deepseek-v4-flash` 是低成本弱模型复现，
+`gpt-5.6-luna` 是跨 Provider 参考复现，二者只运行 `B2b/B3` 并各自比较 `B3-B2b`，不跨模型平均、
+不在看到 test 后替换 primary。B1 embedding 固定为 `gemini-embedding-001`。
 
 ## 本地门检
 
@@ -41,18 +42,34 @@ uv run intentbench taxonomy validate configs/kindred-activity-intents-v1.yaml
 
 ## 显式 Provider smoke
 
-下面是唯一会访问网络的 IE0 命令，只能使用合成 fixture：
+下面的命令是 IE0 唯一允许访问 Provider 的路径，只能使用合成 fixture。各环境先生成 partial record：
 
 ```bash
-GEMINI_API_KEY=... uv run intentbench providers check \
+uv run intentbench providers check \
+  --role primary_decision --role embedding \
   --fixture tests/fixtures/provider-smoke.json \
   --config configs/kir-pilot-v1-experiment.yaml \
-  --output configs/provider-readiness.json \
-  --environment-label user-provided-us-linux
+  --output .provider-cache/google.json \
+  --environment-label us-linux-kindred-runtime
+
+uv run intentbench providers check \
+  --role weak_decision --role cross_provider_reference \
+  --fixture tests/fixtures/provider-smoke.json \
+  --config configs/kir-pilot-v1-experiment.yaml \
+  --output .provider-cache/cross-provider.json \
+  --environment-label mac-kindred-runtime-config
+
+uv run intentbench providers merge \
+  --input .provider-cache/google.json \
+  --input .provider-cache/cross-provider.json \
+  --output configs/provider-readiness.json
 ```
 
-已提交的 readiness 记录来自用户授权的美国 Linux 环境，仅包含 identity、usage、延迟、向量维度与 raw
-response SHA-256；不包含 key 或响应正文。单条 fixture 命中只表示接口就绪，不是效果结果。
+运行前由操作者在对应环境安全加载配置中的环境变量；命令行和仓库都不写 key。已提交的合并记录中，
+Gemini/embedding 来自用户授权的美国 Linux，DeepSeek/OpenAI 来自 Kindred 的 Mac 运行配置，仅包含
+identity、usage、延迟、环境标签、向量维度与 raw-response SHA-256；不包含 key 或响应正文。合并器要求
+所有 partial 使用相同 experiment/fixture hash 且四个角色恰好各出现一次。单条 fixture 命中只表示接口就绪，
+不是效果结果。
 
 完整任务定义见 [设计文档](docs/design.md)，阶段与 Exit Gate 见
 [实施计划](docs/implementation-plan.md)，IE1 标注前置规则见

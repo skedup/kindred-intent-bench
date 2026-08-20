@@ -1,20 +1,31 @@
 {
-  "checked_at": "2026-08-20T15:51:39.904143+00:00",
-  "execution_environment": "user-provided-us-linux",
+  "checked_at": "2026-08-20T16:21:40.581988+00:00",
+  "experiment_config_sha256": "027bf85b295c8b3b55580083713daff3663d35b5e52e20e48021f9544bd50189",
   "fixture_id": "synthetic-intent-readiness-v1",
   "fixture_scope": "synthetic_dev_only",
+  "fixture_sha256": "94b143076a8d57d0d0505562a0a4b3cd0b20b328391d735dee32c0a013fba6d7",
   "model_authority": {
-    "observed_on": "2026-08-20",
-    "source": "kindred_openclaw_main_session_runtime_metadata"
+    "observed_on": "2026-08-21",
+    "primary_source": "kindred_openclaw_main_session_runtime_metadata",
+    "provider_pool_source": "kindred_runtime_configuration"
   },
+  "record_kind": "provider_readiness",
+  "required_roles": [
+    "primary_decision",
+    "weak_decision",
+    "cross_provider_reference",
+    "embedding"
+  ],
   "results": [
     {
+      "adapter": "google_generate_content_v1beta",
       "connectivity": true,
+      "execution_environment": "us-linux-kindred-runtime",
       "fixture_expectation_match": true,
       "identity_match": true,
       "input_tokens": 42,
-      "latency_ms": 1851.186,
-      "output_tokens": 206,
+      "latency_ms": 2427.248,
+      "output_tokens": 268,
       "provider": "google_generative_language",
       "provider_usage_fields": [
         "candidatesTokenCount",
@@ -22,63 +33,138 @@
         "thoughtsTokenCount",
         "totalTokenCount"
       ],
-      "raw_response_sha256": "779760ebd5456e49e1d1ce692e52a948b50760373dbc2ae9ac64c066ac84f47a",
+      "raw_response_sha256": "f1879fe4628ea61c5615c9cae56a47f9307a1d3e1a0f8799338cbf80e332845c",
       "reported_model": "gemini-3.6-flash",
       "requested_model": "gemini-3.6-flash",
+      "required_arms": [
+        "B2a",
+        "B2b",
+        "B3"
+      ],
       "role": "primary_decision",
+      "runtime": {
+        "machine": "x86_64",
+        "system": "Linux"
+      },
       "status": "passed",
+      "structured_output_contract_match": true,
+      "structured_output_mode": "provider_json_schema",
       "structured_output_valid": true,
       "timeout_seconds": 30.0,
-      "total_tokens": 248,
-      "usage_available": true
+      "total_tokens": 310,
+      "usage_available": true,
+      "usage_contract_match": true,
+      "verdict_authority": true
     },
     {
+      "adapter": "deepseek_chat_completions_json_v1",
       "connectivity": true,
+      "execution_environment": "mac-kindred-runtime-config",
       "fixture_expectation_match": true,
       "identity_match": true,
-      "input_tokens": 42,
-      "latency_ms": 1433.678,
-      "output_tokens": 198,
-      "provider": "google_generative_language",
+      "input_tokens": 286,
+      "latency_ms": 2609.941,
+      "output_tokens": 276,
+      "provider": "deepseek",
       "provider_usage_fields": [
-        "candidatesTokenCount",
-        "promptTokenCount",
-        "thoughtsTokenCount",
-        "totalTokenCount"
+        "completion_tokens",
+        "prompt_cache_hit_tokens",
+        "prompt_cache_miss_tokens",
+        "prompt_tokens",
+        "reasoning_tokens",
+        "total_tokens"
       ],
-      "raw_response_sha256": "1c27f617de0af6d05224e9a4d475571aaa41661a6dafc50afad8e463cb804eaa",
-      "reported_model": "gemini-3.5-flash",
-      "requested_model": "gemini-3.5-flash",
+      "raw_response_sha256": "b2c03b28d5db421148daee68be1f0593f401757d4ee4e85e366fa3a9443100b5",
+      "reported_model": "deepseek-v4-flash",
+      "requested_model": "deepseek-v4-flash",
+      "required_arms": [
+        "B2b",
+        "B3"
+      ],
       "role": "weak_decision",
+      "runtime": {
+        "machine": "arm64",
+        "system": "Darwin"
+      },
       "status": "passed",
+      "structured_output_contract_match": true,
+      "structured_output_mode": "json_object_plus_local_schema_validation",
       "structured_output_valid": true,
-      "timeout_seconds": 30.0,
-      "total_tokens": 240,
-      "usage_available": true
+      "timeout_seconds": 60.0,
+      "total_tokens": 562,
+      "usage_available": true,
+      "usage_contract_match": true,
+      "verdict_authority": false
     },
     {
+      "adapter": "openai_responses_json_schema_v1",
+      "connectivity": true,
+      "execution_environment": "mac-kindred-runtime-config",
+      "fixture_expectation_match": true,
+      "identity_match": true,
+      "input_tokens": 148,
+      "latency_ms": 2521.664,
+      "output_tokens": 87,
+      "provider": "openai",
+      "provider_usage_fields": [
+        "input_tokens",
+        "output_tokens",
+        "reasoning_tokens",
+        "total_tokens"
+      ],
+      "raw_response_sha256": "e47e1d4907e3f4a150093c73ae621fe5669041e84a5bca568ba3de67dd639bfa",
+      "reported_model": "gpt-5.6-luna",
+      "requested_model": "gpt-5.6-luna",
+      "required_arms": [
+        "B2b",
+        "B3"
+      ],
+      "role": "cross_provider_reference",
+      "runtime": {
+        "machine": "arm64",
+        "system": "Darwin"
+      },
+      "status": "passed",
+      "structured_output_contract_match": true,
+      "structured_output_mode": "provider_json_schema",
+      "structured_output_valid": true,
+      "timeout_seconds": 60.0,
+      "total_tokens": 235,
+      "usage_available": true,
+      "usage_contract_match": true,
+      "verdict_authority": false
+    },
+    {
+      "adapter": "google_embed_content_v1beta",
       "connectivity": true,
       "dimension": 3072,
       "dimension_match": true,
+      "execution_environment": "us-linux-kindred-runtime",
       "expected_dimension": 3072,
       "finite_vector": true,
       "identity_evidence": "model_specific_request_endpoint",
       "identity_reported_by_provider": false,
-      "latency_ms": 230.949,
+      "latency_ms": 265.068,
       "provider": "google_generative_language",
       "raw_response_sha256": "09f7ce39f8906bdca381a43b9089f6a3c5ce3ba45188ef2540e6faa1cbe80946",
       "reported_model": null,
       "requested_model": "gemini-embedding-001",
       "role": "embedding",
+      "runtime": {
+        "machine": "x86_64",
+        "system": "Linux"
+      },
       "status": "passed",
       "timeout_seconds": 30.0
     }
   ],
-  "runtime": {
-    "machine": "x86_64",
-    "system": "Linux"
-  },
-  "schema_version": 1,
+  "schema_version": 2,
   "secret_policy": "environment_variable_name_only; no secret or raw response persisted",
+  "selected_roles": [
+    "primary_decision",
+    "weak_decision",
+    "cross_provider_reference",
+    "embedding"
+  ],
   "status": "passed"
 }

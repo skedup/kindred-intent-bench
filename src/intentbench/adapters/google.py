@@ -10,14 +10,7 @@ from typing import Any
 
 import httpx
 
-from intentbench.adapters.base import EmbeddingResult, GenerationResult
-
-
-class ProviderError(RuntimeError):
-    def __init__(self, error_type: str, message: str, status_code: int | None = None) -> None:
-        super().__init__(message)
-        self.error_type = error_type
-        self.status_code = status_code
+from intentbench.adapters.base import EmbeddingResult, GenerationResult, ProviderError
 
 
 class GoogleGenerativeLanguageClient:
@@ -129,6 +122,7 @@ class GoogleGenerativeLanguageClient:
             latency_ms=latency_ms,
             raw_response_sha256=hashlib.sha256(raw).hexdigest(),
             usage_metadata=numeric_usage,
+            structured_output_mode="provider_json_schema",
         )
 
     def embed(self, *, model: str, text: str) -> EmbeddingResult:

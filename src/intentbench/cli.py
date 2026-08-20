@@ -9,7 +9,13 @@ import click
 
 from intentbench import __version__
 from intentbench.freeze import FreezeGuardError, verify_test_guard
-from intentbench.providers import run_provider_readiness, write_readiness_record
+from intentbench.providers import (
+    READINESS_ROLES,
+    load_readiness_record,
+    merge_provider_readiness,
+    run_provider_readiness,
+    write_readiness_record,
+)
 from intentbench.taxonomy import load_taxonomy
 
 
@@ -110,14 +116,59 @@ def providers_group() -> None:
     show_default=True,
     help="Non-secret label describing where the manual smoke ran.",
 )
+@click.option(
+    "--role",
+    "selected_roles",
+    type=click.Choice(READINESS_ROLES),
+    multiple=True,
+    help="Role to check; repeat for a partial, mergeable readiness record.",
+)
 def providers_check(
-    fixture: Path, experiment_path: Path, output: Path, environment_label: str
+    fixture: Path,
+    experiment_path: Path,
+    output: Path,
+    environment_label: str,
+    selected_roles: tuple[str, ...],
 ) -> None:
-    record = run_provider_readiness(experiment_path, fixture, environment_label=environment_label)
+    try:
+        record = run_provider_readiness(
+            experiment_path,
+            fixture,
+            environment_label=environment_label,
+            selected_roles=selected_roles or None,
+        )
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
     write_readiness_record(record, output)
     click.echo(json.dumps(record, ensure_ascii=False, sort_keys=True))
     if record["status"] != "passed":
         raise click.ClickException("one or more Provider readiness checks failed")
+
+
+@providers_group.command("merge")
+@click.option(
+    "--input",
+    "input_paths",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    multiple=True,
+    required=True,
+    help="Partial readiness record; repeat until all configured roles are present.",
+)
+@click.option(
+    "--output",
+    type=click.Path(path_type=Path, dir_okay=False),
+    default=Path("configs/provider-readiness.json"),
+    show_default=True,
+)
+def providers_merge(input_paths: tuple[Path, ...], output: Path) -> None:
+    try:
+        record = merge_provider_readiness([load_readiness_record(path) for path in input_paths])
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    write_readiness_record(record, output)
+    click.echo(json.dumps(record, ensure_ascii=False, sort_keys=True))
+    if record["status"] != "passed":
+        raise click.ClickException("merged Provider readiness contains failed checks")
 
 
 if __name__ == "__main__":

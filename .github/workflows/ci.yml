@@ -13,6 +13,8 @@ jobs:
     timeout-minutes: 10
     env:
       GEMINI_API_KEY: ""
+      DEEPSEEK_API_KEY: ""
+      OPENAI_API_KEY: ""
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.0.1

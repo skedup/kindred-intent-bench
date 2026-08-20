@@ -54,6 +54,7 @@ class PredictionStatus(str, Enum):
 class ModelRole(str, Enum):
     PRIMARY_DECISION = "primary_decision"
     WEAK_DECISION = "weak_decision"
+    CROSS_PROVIDER_REFERENCE = "cross_provider_reference"
     EMBEDDING = "embedding"
 
 

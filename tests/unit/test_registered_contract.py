@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from pathlib import Path
 
+import pytest
 import yaml
+from pydantic import ValidationError
 
 from intentbench.bootstrap import (
     BOOTSTRAP_ITERATIONS,
@@ -12,7 +15,7 @@ from intentbench.bootstrap import (
     MIN_CLUSTERS,
 )
 from intentbench.freeze import ExperimentLock
-from intentbench.providers import load_readiness_inputs
+from intentbench.providers import ReadinessModels, load_readiness_inputs
 
 EXPERIMENT_PATH = Path("configs/kir-pilot-v1-experiment.yaml")
 FIXTURE_PATH = Path("tests/fixtures/provider-smoke.json")
@@ -40,21 +43,56 @@ def test_experiment_draft_registers_runtime_candidates_and_exact_statistics() ->
 def test_selected_models_and_safe_readiness_record_are_consistent() -> None:
     models, fixture = load_readiness_inputs(EXPERIMENT_PATH, FIXTURE_PATH)
     assert models.primary_decision.model == "gemini-3.6-flash"
-    assert models.weak_decision.model == "gemini-3.5-flash"
+    assert models.weak_decision.model == "deepseek-v4-flash"
+    assert models.cross_provider_reference.model == "gpt-5.6-luna"
     assert models.embedding.model == "gemini-embedding-001"
     assert models.primary_decision.timeout_seconds == 30.0
+    assert models.primary_decision.verdict_authority is True
+    assert models.primary_decision.required_arms == ["B2a", "B2b", "B3"]
+    assert models.weak_decision.required_arms == ["B2b", "B3"]
+    assert models.cross_provider_reference.required_arms == ["B2b", "B3"]
+    assert models.weak_decision.verdict_authority is False
+    assert models.cross_provider_reference.verdict_authority is False
+    assert models.comparison_matrix["cross_provider_replication"] == {
+        "roles": ["weak_decision", "cross_provider_reference"],
+        "arms": ["B2b", "B3"],
+        "comparison": "within_model_B3_minus_B2b",
+        "pooled_score_or_verdict": False,
+        "primary_model_switch_after_test": "forbidden",
+    }
     assert fixture.fixture_id == "synthetic-intent-readiness-v1"
 
     readiness_text = Path("configs/provider-readiness.json").read_text(encoding="utf-8")
     readiness = json.loads(readiness_text)
+    assert readiness["schema_version"] == 2
     assert readiness["status"] == "passed"
+    assert readiness["selected_roles"] == [
+        "primary_decision",
+        "weak_decision",
+        "cross_provider_reference",
+        "embedding",
+    ]
     assert [result["requested_model"] for result in readiness["results"]] == [
         models.primary_decision.model,
         models.weak_decision.model,
+        models.cross_provider_reference.model,
         models.embedding.model,
     ]
     assert "AIza" not in readiness_text
     assert "GEMINI_API_KEY=" not in readiness_text
-    embedding_result = readiness["results"][2]
+    embedding_result = readiness["results"][3]
     assert embedding_result["identity_evidence"] == "model_specific_request_endpoint"
     assert embedding_result["identity_reported_by_provider"] is False
+
+
+def test_model_role_and_global_verdict_authority_cannot_drift_silently() -> None:
+    payload = yaml.safe_load(EXPERIMENT_PATH.read_text(encoding="utf-8"))["models"]
+    drifted = deepcopy(payload)
+    drifted["weak_decision"]["verdict_authority"] = True
+    with pytest.raises(ValidationError, match="provider/arm authority"):
+        ReadinessModels.model_validate(drifted)
+
+    drifted = deepcopy(payload)
+    drifted["comparison_matrix"]["cross_provider_replication"]["pooled_score_or_verdict"] = True
+    with pytest.raises(ValidationError, match="seven-run contract"):
+        ReadinessModels.model_validate(drifted)

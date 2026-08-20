@@ -2,7 +2,7 @@
 
 > ✅ **Status**: `IE0 complete / IE1 not started`
 >
-> 日期：2026-08-20
+> 日期：2026-08-21
 >
 > 本文取代 Kindred 产品仓库中《开放意图形成与 Activity 诚实落地》的**近期实施优先级**；原文继续留在
 > Kindred，作为潜在生产架构参考，不复制到本评测仓库。
@@ -452,27 +452,34 @@ schema repair policy 与候选顺序。B2b 两次都使用同一闭集决策语�
 B3 是实验方法，不是预设胜者。若不优于 B2b，结论应为 negative、inconclusive 或只保留诊断价值，不能
 反复修改 test、Prompt 或采样直到支持原方案。B2a 继续回答“额外一次调用整体是否值得”。
 
-### 5.2 弱模型与 Provider
+### 5.2 模型角色与跨 Provider 复现
 
-Pilot 至少运行：
+Pilot 固定下面的七运行产物矩阵：
 
-- 当前生产主模型；
-- 一个低性能、低成本模型；
+| 角色 | Provider / model | B2a | B2b | B3 | 结论权限 |
+|---|---|---:|---:|---:|---|
+| primary | Google / `gemini-3.6-flash` | ✓ | ✓ | ✓ | 唯一全局三态 verdict authority |
+| weak | DeepSeek / `deepseek-v4-flash` | — | ✓ | ✓ | 低成本弱模型复现，只报告本模型 `B3-B2b` |
+| cross-provider reference | OpenAI / `gpt-5.6-luna` | — | ✓ | ✓ | 参考复现，只报告本模型 `B3-B2b` |
 
-在查看 test prediction 前，二者中必须指定一个 `primary_decision_model`，默认是当前生产主模型。§6.4 的
-全局 `promising/inconclusive/negative` 只由该模型决定；低性能模型使用同一 evaluator 单独给出三态
-结果，作为弱模型鲁棒性切片，不能与主模型平均，也不能在结果出来后改成主判模型。若本次求职实验专门
-研究低性能模型，可以预先把低性能模型登记为 `primary_decision_model`，但必须在 manifest 说明理由。
+这不是三模型排行榜。全局 `promising/inconclusive/negative` 只由预登记的 primary 决定；两个复现角色使用
+同一 evaluator 和三态函数分别报告，不能跨 Provider 平均、投票或挑最好结果，也不能在看到 test 后替换
+primary。三方同方向能增强“方法可迁移”的证据，方向不一致则形成 model/provider interaction 的诊断结论，
+不推翻 primary 的预登记全局结论。
 
-模型选择不能推迟到正式运行：IE0 必须登记 primary LLM、weak LLM、embedding model、adapter、环境变量名
-和预期 usage metadata，并分别用单条 dev fixture 完成 connectivity、结构化输出、超时和 token-usage smoke。
-IE3 的机器 Exit Gate 要求 `B2a/B2b/B3 × primary/weak` 六个 LLM run 全部有匹配 manifest；B0/B1 各运行
-一次，不进入 LLM 模型矩阵。
+Gemini 的 B2a 回答“一次额外 verifier 调用整体是否值得”，因此只在 primary 做正式 scoring。DeepSeek 与
+OpenAI 的 B2b call-1 仍须使用与 one-stage 基线相同的调用合同和可追溯缓存，但不单独产出或报告 B2a 评分
+臂；它们只回答在各自模型内部，结构分解 B3 是否优于等调用 B2b。
 
-本次 IE0 以 Kindred/OpenClaw `agent:main:main` 的运行时模型元数据为 authority，预登记
-`gemini-3.6-flash` 为 primary、同 Provider 的 `gemini-3.5-flash` 为 weak、
-`gemini-embedding-001` 为 embedding。Kindred 运行环境中另有 Grok、DeepSeek、OpenAI 可选模型；它们
-登记为 candidate pool，但不在 IE0 扩成未预注册的横评矩阵。
+模型选择不能推迟到正式运行：IE0 必须登记三个 LLM 角色、embedding model、各自 adapter、结构化输出
+模式、环境变量名、超时、生成参数和预期 usage metadata，并分别用单条 synthetic dev fixture 完成
+connectivity、identity、结构化输出、超时和 token-usage smoke。若凭据分布在不同运行环境，可生成带同一
+experiment/fixture hash 的 partial readiness records，再用机器校验合并；四个角色必须恰好各出现一次。
+IE3 的机器 Exit Gate 要求表中的七个 LLM run 全部有匹配 manifest；B0/B1 各运行一次，不进入 LLM 矩阵。
+
+本次 IE0 以 Kindred/OpenClaw `agent:main:main` 运行时元数据作为 primary authority，以 Kindred 运行配置
+作为可用 Provider pool authority。B1 固定 `gemini-embedding-001`。Grok 保留在 candidate pool，避免 Pilot
+膨胀为无明确问题的四 Provider 排行；若未来加入，必须另开已预注册的模型鲁棒性实验。
 
 同一模型重复三次的稳定性子集后置到 240 条 IE-V1 扩展，避免 pilot 同时承担所有严谨性增强。
 
@@ -530,7 +537,7 @@ Hugging Face 训练、GPU 环境、公共数据适配和生产 runtime。
 | tokens / estimated cost | 效果提升是否值得成本 |
 
 Pilot 的 24 条 semantic-preservation audit 保留为**诊断项，不进入三态 verdict**。slice IDs 在 test 前冻结；
-对 B3 的 primary/weak 两个模型分别审查，共 48 行记录。人工 rubric 只检查
+对 B3 的 primary/weak/cross-provider-reference 三个模型分别审查，共 72 行记录。人工 rubric 只检查
 `action/object/horizon` 三项，分别记 `preserved/partial/lost`，结果写入
 `semantic-audit.csv`。它不计算 slot F1，也不能用于事后调 Prompt。保留它是为了验证 B3 阶段 A 没有在
 自由文本表示中丢失关键语义，而不是为了把 Pilot 扩成 slot-filling 项目。
@@ -574,7 +581,8 @@ Pilot 不报告 risk-coverage curve：统一 prediction schema 没有跨 B0/B1/L
 
 Pilot 在看 test prediction 前预登记三类结论。所有差值均定义为 `B3 - B2b`，置信区间均为 paired
 `bootstrap_cluster_id` bootstrap 95% CI `[L, U]`。全局结论只读取预登记的
-`primary_decision_model`；弱模型按同一函数单独报告，不参与平均。
+`primary_decision_model`；weak 与 cross-provider-reference 按同一函数各自报告，不参与平均、投票或
+primary 选择。
 
 进入三态判定前先做 run-integrity gate：freeze/experiment hash 不匹配的请求在 runner 层拒绝；duplicate
 或 extra prediction 在 evaluator 层标为 `invalid_run`，不生成三态 verdict。missing/provider/schema-invalid
@@ -734,15 +742,16 @@ tests/               # unit、contract、offline integration
 - B3 阶段 A 不看 taxonomy；
 - 阶段 B 看完整 taxonomy 并支持 `oos/no_intent/ambiguous`；
 - 对齐 B2b/B3 调用次数、每次 output budget 与失败策略，并报告实际总 token 差异；
-- 运行主模型和一个低成本模型。
+- primary 完整运行 B2a/B2b/B3；weak 与 cross-provider-reference 各运行 B2b/B3。
 
 交付：B2b/B3 paired 结果，不接入生产 Sense。
 
 ### IE4：Pilot 报告与求职材料（1～1.5 天）
 
 - 生成指标表、paired cluster-bootstrap CI、混淆矩阵和 badcase taxonomy；
-- 按冻结 rubric 完成 24-case × primary/weak 的 `semantic-audit.csv`，只作诊断，不进入三态 verdict；
-- 分别报告 primary/弱模型结果，并用冻结函数生成 promising/inconclusive/negative 与成本取舍；
+- 按冻结 rubric 完成 24-case × 三个 LLM 角色的 `semantic-audit.csv`，只作诊断，不进入三态 verdict；
+- 分别报告 primary/weak/cross-provider-reference 结果，并用冻结函数生成各自的
+  promising/inconclusive/negative 与成本取舍；全局结论只读取 primary；
 - 整理一页 README、简历 bullet、5 分钟和 15 分钟项目讲法；
 - 确保 fresh checkout 可复现实验或使用已缓存响应重算报告。
 
@@ -902,11 +911,13 @@ Workbench 完成后，根据投递岗位选择一条，不同时展开：
 - 160 条 Gold 均有可审计的输入内 decision evidence，并通过 schema 与 cluster split 检查；
 - B0、B1、B2a、B2b、B3 至少各有一组可复现结果；
 - B1 prototype 来源/数量与 gate 顺序已冻结；primary decision model 已写入 manifest；
-- B2a/B2b/B3 × primary/weak 的预登记矩阵均有 manifest；B2b call-1 已复用对应 B2a cache；
+- primary 的 B2a/B2b/B3 与两个复现角色的 B2b/B3 共七个预登记 run 均有 manifest；B2b call-1 均有
+  one-stage-compatible cache provenance；
 - B2b/B3 的调用次数、output budget、重试和 repair policy 已对齐，实际总 token 差异已报告；
 - 主指标、切片指标、Pilot cluster-bootstrap CI、延迟成本与 invalid rate 均已报告；
 - confusion matrix 和 badcases 可定位主要失败模式；
-- 24-case × primary/weak semantic-preservation audit 已按冻结 rubric 记录，且没有用于事后调 Prompt；
+- 24-case × 三个 LLM 角色的 semantic-preservation audit 已按冻结 rubric 记录，共 72 行，且没有用于
+  事后调 Prompt；
 - 报告按预注册条件给出 promising/inconclusive/negative，而不是默认双阶段正确；
 - fresh checkout 能用缓存 prediction 重算相同 metrics；
 - 没有生产代码和私密数据变更。

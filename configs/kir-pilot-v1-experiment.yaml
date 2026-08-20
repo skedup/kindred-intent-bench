@@ -8,8 +8,9 @@ artifacts: {}
 
 models:
   authority:
-    source: kindred_openclaw_main_session_runtime_metadata
-    observed_on: "2026-08-20"
+    primary_source: kindred_openclaw_main_session_runtime_metadata
+    provider_pool_source: kindred_runtime_configuration
+    observed_on: "2026-08-21"
   runtime_candidate_pool:
     - provider: google
       models: [gemini-3.6-flash, gemini-3.5-flash]
@@ -21,8 +22,21 @@ models:
       models: [gpt-5.6-luna]
   selection_rationale:
     primary_decision: current_kindred_openclaw_main_session
-    weak_decision: same_provider_predecessor_reduces_provider_confound
-    non_selected_candidates: deferred_to_separate_model_robustness_experiment
+    weak_decision: cross_provider_low_cost_weak_replication
+    cross_provider_reference: cross_provider_reference_replication
+    non_selected_candidates: grok_deferred_to_separate_model_robustness_experiment
+  comparison_matrix:
+    primary_confirmatory:
+      roles: [primary_decision]
+      arms: [B2a, B2b, B3]
+      comparison: B3_minus_B2b
+      global_verdict_authority: true
+    cross_provider_replication:
+      roles: [weak_decision, cross_provider_reference]
+      arms: [B2b, B3]
+      comparison: within_model_B3_minus_B2b
+      pooled_score_or_verdict: false
+      primary_model_switch_after_test: forbidden
   primary_decision:
     provider: google_generative_language
     model: gemini-3.6-flash
@@ -36,16 +50,40 @@ models:
     generation_parameters: {}
     unsupported_generation_parameters: [temperature, top_k, top_p]
     expected_usage_fields: [promptTokenCount, totalTokenCount]
+    structured_output_mode: provider_json_schema
+    required_arms: [B2a, B2b, B3]
+    verdict_authority: true
   weak_decision:
-    provider: google_generative_language
-    model: gemini-3.5-flash
-    adapter: google_generate_content_v1beta
-    base_url: https://generativelanguage.googleapis.com
-    api_key_env: GEMINI_API_KEY
-    timeout_seconds: 30.0
+    provider: deepseek
+    model: deepseek-v4-flash
+    adapter: deepseek_chat_completions_json_v1
+    base_url: https://api.deepseek.com
+    api_key_env: DEEPSEEK_API_KEY
+    timeout_seconds: 60.0
     request_max_output_tokens: 512
-    generation_parameters: {}
-    expected_usage_fields: [promptTokenCount, totalTokenCount]
+    generation_parameters:
+      thinking:
+        type: enabled
+      reasoning_effort: high
+    expected_usage_fields: [prompt_tokens, completion_tokens, total_tokens]
+    structured_output_mode: json_object_plus_local_schema_validation
+    required_arms: [B2b, B3]
+    verdict_authority: false
+  cross_provider_reference:
+    provider: openai
+    model: gpt-5.6-luna
+    adapter: openai_responses_json_schema_v1
+    base_url: https://api.openai.com/v1
+    api_key_env: OPENAI_API_KEY
+    timeout_seconds: 60.0
+    request_max_output_tokens: 512
+    generation_parameters:
+      reasoning:
+        effort: high
+    expected_usage_fields: [input_tokens, output_tokens, total_tokens]
+    structured_output_mode: provider_json_schema
+    required_arms: [B2b, B3]
+    verdict_authority: false
   embedding:
     provider: google_generative_language
     model: gemini-embedding-001

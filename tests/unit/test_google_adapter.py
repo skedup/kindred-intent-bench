@@ -5,7 +5,8 @@ import json
 import httpx
 import pytest
 
-from intentbench.adapters.google import GoogleGenerativeLanguageClient, ProviderError
+from intentbench.adapters.base import ProviderError
+from intentbench.adapters.google import GoogleGenerativeLanguageClient
 
 
 def test_generation_uses_json_schema_and_preserves_usage_contract() -> None:
@@ -57,6 +58,7 @@ def test_generation_uses_json_schema_and_preserves_usage_contract() -> None:
         )
     assert (result.input_tokens, result.output_tokens, result.total_tokens) == (10, 8, 18)
     assert result.reported_model == "gemini-3.6-flash"
+    assert result.structured_output_mode == "provider_json_schema"
 
 
 def test_provider_error_does_not_persist_response_body() -> None:

@@ -2,7 +2,7 @@
 
 > Status: `IE0 complete / IE1 not started`
 >
-> 日期：2026-08-20
+> 日期：2026-08-21
 >
 > 权威设计：[design.md](design.md)
 
@@ -30,7 +30,7 @@ Pilot 不修改 Kindred，不读取真实 State、Thought 或用户消息，不�
 | 工程门检 | pytest、ruff、mypy；GitHub Actions 执行离线门检 |
 | 仓库关系 | 不 import Kindred；只维护人工审核后的 taxonomy/context 静态快照 |
 | 网络边界 | schema、evaluator、统计和报告完全离线；只有 LLM/embedding runner 可以访问 Provider |
-| Provider 边界 | IE0 选择 primary/weak/embedding model 并做 dev-fixture smoke；只实现实际需要的窄 adapter |
+| Provider 边界 | IE0 固定 primary/weak/cross-provider-reference/embedding 四个角色并做 dev-fixture smoke；只实现实际需要的窄 adapter |
 | Secret | 只从环境变量读取；manifest 只记录配置名/hash，不记录 key、cookie 或原始环境变量 |
 | 测试集边界 | 默认是 non-blind frozen test；正式 test 必须同时通过 dataset freeze 与 experiment lock hash 门禁 |
 | 结果版本化 | 提交一组脱敏 reference run；临时 probe 和含 secret 的原始响应不进入 Git |
@@ -147,9 +147,11 @@ flowchart LR
 
 #### IE0.4 Provider 与模型前置验证
 
-- 在 experiment draft 中登记 primary LLM、weak LLM、embedding model、adapter 和环境变量名；
+- 在 experiment draft 中登记 primary、weak、cross-provider-reference 三个 LLM 角色，以及 embedding
+  model、各自 adapter、结构化输出模式和环境变量名；
 - 每个模型只使用单条 synthetic dev fixture 验证连接、超时、结构化输出和 identity；
 - LLM smoke 必须确认 input/output token usage 可得；缺失时在进入 IE1 前更换 adapter 或明确预算合同不可行；
+- 凭据跨环境时输出带相同 experiment/fixture hash 的 partial records，合并器校验四个角色无缺失、无重复；
 - 输出不含 secret 的 `configs/provider-readiness.json`；不生成 test prediction，不做效果判断。
 
 **Exit gate IE0**
@@ -160,7 +162,8 @@ uv run ruff check .
 uv run mypy src
 uv run pytest
 uv run intentbench taxonomy validate configs/kindred-activity-intents-v1.yaml
-uv run intentbench providers check --fixture tests/fixtures/provider-smoke.json
+uv run intentbench providers check --role <role> --fixture tests/fixtures/provider-smoke.json
+uv run intentbench providers merge --input <partial> --input <partial>
 ```
 
 前四项完全离线并全部通过；Provider check 是显式手动 smoke，成功结果只记录 capability/usage metadata。
@@ -258,16 +261,19 @@ schema、invalid policy、cluster/bootstrap、双 freeze guard 与 verdict 边�
 
 - 在 test 前冻结 B0/B1 配置、三个 LLM Prompt、Provider 配置和 dependency lock；
 - 把模型角色、Prompt/config hash、预算和三态门写入 `kir-pilot-v1-experiment.yaml`；
-- 预登记一个 `primary_decision_model`，另一个模型只作为弱模型切片；
+- 预登记 Gemini primary、DeepSeek weak 与 OpenAI cross-provider-reference；只有 primary 有全局 verdict
+  authority，后两者只做各自模型内的 `B3-B2b` 复现；
 - 先完整运行 dev sanity check，再对 frozen test 执行版本化 run；
 - `run --split test` 必须先验证 `freeze-manifest.json` 与 experiment lock 的全部 hash，任一缺失或不匹配就拒绝；
 - 报告 B2b/B3 实际总 token 差异；超过 10% 时自动标记 `budget-confounded`。
 
 **Exit gate IE3**
 
-- B0/B1 各有一组 manifest；`B2a/B2b/B3 × primary/weak` 六个格子都有 manifest 与 prediction；
+- B0/B1 各有一组 manifest；primary 的 B2a/B2b/B3 与两个复现角色的 B2b/B3 共七格都有 manifest 与
+  prediction；
 - 每个 case 的失败都显式记录，不因 parse/provider failure 静默丢弃；
-- six-run matrix checker、B2b call-1 cache provenance 和双 freeze guard 均通过；
+- seven-run matrix checker、所有 B2b call-1 的 one-stage-compatible cache provenance 和双 freeze guard
+  均通过；secondary 的 call-1 cache 不另计正式 B2a scoring arm；
 - B2b/B3 预算合同可机器校验；
 - 原始 test、Gold、Prompt 和 primary model 在看到结果后没有被修改。
 
@@ -276,10 +282,10 @@ schema、invalid policy、cluster/bootstrap、双 freeze guard 与 verdict 边�
 #### IE4.1 自动报告
 
 - 输出 metrics、95% paired cluster-bootstrap CI、confusion、badcases、latency/token/cost；
-- 对预冻结的 24 条 slice，在 B3 primary/weak 两个模型上按 `action/object/horizon` rubric 记录
-  `preserved/partial/lost`，共 48 行，生成
+- 对预冻结的 24 条 slice，在 B3 三个 LLM 角色上按 `action/object/horizon` rubric 记录
+  `preserved/partial/lost`，共 72 行，生成
   `semantic-audit.csv`；该结果只作诊断，不进入三态 verdict，也不用于回调 Prompt；
-- primary model 与弱模型分别报告，不平均；
+- primary、weak 与 cross-provider-reference 分别报告，不平均、不投票；
 - evaluator 按有效性 → negative → statistical inconclusive → promising 的冻结顺序生成结论；
 - 所有表格由结构化结果生成，README 不手填与缓存不一致的数字。
 
@@ -294,8 +300,8 @@ schema、invalid policy、cluster/bootstrap、双 freeze guard 与 verdict 边�
 
 - fresh clone 能安装并执行离线门检；
 - 使用已缓存 prediction 能重算完全相同的结构化指标和 verdict；
-- 160-case 数据、五个 baseline、主/弱模型、CI、badcase、延迟与成本均有可审计产物；
-- 24-case × primary/weak semantic-preservation audit 有冻结 IDs、rubric 和记录文件；
+- 160-case 数据、五个 baseline、三 LLM 角色、CI、badcase、延迟与成本均有可审计产物；
+- 24-case × 三个 LLM 角色的 semantic-preservation audit 有冻结 IDs、rubric 和 72 行记录；
 - 仓库不包含 secret、生产数据或对 Kindred 的运行时依赖；
 - 报告明确说明 synthetic、balanced、non-blind portfolio pilot 的外推限制。
 
@@ -310,7 +316,7 @@ schema、invalid policy、cluster/bootstrap、双 freeze guard 与 verdict 边�
 | Freeze guard | dataset/experiment lock 缺失、hash mismatch 和合法 test run |
 | Adapter contract | 调用次数、预算、重试、repair、candidate order 与错误映射 |
 | Cache integration | 内容/taxonomy/Prompt/config 任一 hash 变化导致 miss；B2b call-1 provenance 指向 B2a |
-| Matrix integration | B2a/B2b/B3 × primary/weak 六格齐全，缺一格不得生成正式报告 |
+| Matrix integration | primary 三臂 + 两个复现角色各两臂，共七格齐全；缺一格不得生成正式报告 |
 | Report snapshot | 指标、confusion、badcase 和 manifest 引用一致 |
 | Privacy check | fixtures/results 不包含已知 secret pattern 或 Kindred 生产路径内容 |
 
@@ -340,7 +346,7 @@ Provider live tests 默认不进入普通 CI；使用显式 marker 手动运行�
 | 160 条使 CI 太宽 | 按合同判 inconclusive；不临时改门槛；另开 power-analysis proposal 才能扩样 |
 | B1 得到更多人工监督 | 限制 prototype 来源/数量并报告 case id；所有方法只用同一 dev pool |
 | 双阶段收益来自更多 token | B2b 双调用对照；记录真实 token；差异超过 10% 判 budget-confounded |
-| Provider 响应不可复现 | 固定版本/参数/hash并缓存 normalized response；只声称 evaluator 可复现 |
+| Provider 响应不可复现 | 固定各 Provider 版本/参数/hash并缓存 normalized response；只声称 evaluator 可复现 |
 | 生成数据过于模板化 | 使用 scenario/contrast/paraphrase cluster，做泄漏和 slice coverage 检查 |
 | 项目膨胀成平台 | Pilot 只实现五个 baseline 与离线报告；IE5、训练、Shadow、dashboard 全部后置 |
 | 9 天排期没有余量 | 对外目标 9 天，计划预留 2 天风险缓冲；不以删除公平对照换进度 |
@@ -372,7 +378,7 @@ uv.lock
 .github/workflows/ci.yml
 README.md
 src/intentbench/{cli,schemas,taxonomy,b1,evaluator,metrics,bootstrap,verdict,freeze,providers}.py
-src/intentbench/adapters/{base,google}.py
+src/intentbench/adapters/{base,google,deepseek,openai}.py
 configs/{kindred-activity-intents-v1.yaml,kir-pilot-v1-experiment.yaml,provider-readiness.json}
 tests/unit/
 tests/fixtures/provider-smoke.json
