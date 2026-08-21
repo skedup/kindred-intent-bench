@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from intentbench.evaluator import RunContractError, evaluate_run
-from intentbench.schemas import Case, Decision, Prediction, PredictionStatus
+from intentbench.schemas import DIAGNOSTIC_SLICE_TAGS, Case, Decision, Prediction, PredictionStatus
 from intentbench.taxonomy import load_taxonomy
 
 
@@ -109,8 +109,9 @@ def test_near_oos_and_sibling_false_reject_are_exact(
         make_case(
             "kir-test-001",
             Decision.OOS,
-            tags=["near_oos"],
+            tags=["near_oos", "hard_negative", "hypothesized_weak_model_probe"],
             siblings=["take_a_walk"],
+            hard_negative_against=["take_a_walk"],
             contrast="walk-vs-run",
         ),
         make_case(
@@ -127,3 +128,100 @@ def test_near_oos_and_sibling_false_reject_are_exact(
     result = evaluate_run(cases, predictions, taxonomy)
     assert result["near_oos_recall"] == 1.0
     assert result["sibling_id_false_reject_rate"] == 1.0
+
+
+def test_context_pairs_and_generic_slice_metrics_are_reported(
+    make_case: Callable[..., Case],
+) -> None:
+    taxonomy = load_taxonomy(Path("configs/kindred-activity-intents-v1.yaml"))
+    cases = [
+        make_case(
+            "kir-test-001",
+            Decision.IN_SCOPE,
+            target_intent="rest",
+            tags=["context_control"],
+            scenario="context-rest",
+            contrast="context-rest",
+            cluster="sg-context-rest",
+        ),
+        make_case(
+            "kir-test-002",
+            Decision.IN_SCOPE,
+            target_intent="rest",
+            state_summary="窗外正在下雨。我现在没有具体想做的事情。",
+            tags=["context_distractor"],
+            scenario="context-rest",
+            contrast="context-rest",
+            cluster="sg-context-rest",
+        ),
+    ]
+    predictions = [
+        prediction("kir-test-001", Decision.IN_SCOPE, "rest"),
+        prediction("kir-test-002", Decision.OOS),
+    ]
+    result = evaluate_run(cases, predictions, taxonomy)
+    assert result["context_control_error_count"] == 0
+    assert result["context_distractor_error_count"] == 1
+    assert result["context_distractor_pair_count"] == 1
+    assert result["context_distractor_flip_rate"] == 1.0
+    assert result["context_distractor_adverse_flip_rate"] == 1.0
+    assert result["context_distractor_error_delta"] == 1
+    assert result["slice_metrics"]["context_distractor"] == {
+        "case_count": 1,
+        "cluster_count": 1,
+        "hierarchical_exact_match": 0.0,
+        "decision_accuracy": 0.0,
+    }
+    assert result["slice_confusions"]["context_distractor"]["in_scope"]["oos"] == 1
+    assert result["slice_overlap_matrix"]["context_control"]["context_control"] == 1
+    assert result["slice_overlap_matrix"]["context_control"]["context_distractor"] == 0
+    assert set(result["slice_metrics"]) == set(DIAGNOSTIC_SLICE_TAGS)
+    assert set(result["slice_confusions"]) == set(DIAGNOSTIC_SLICE_TAGS)
+    assert set(result["slice_overlap_matrix"]) == set(DIAGNOSTIC_SLICE_TAGS)
+
+
+def test_slot_and_quiet_control_specialty_metrics_are_reported(
+    make_case: Callable[..., Case],
+) -> None:
+    taxonomy = load_taxonomy(Path("configs/kindred-activity-intents-v1.yaml"))
+    slot_case = make_case(
+        "kir-test-001",
+        Decision.IN_SCOPE,
+        target_intent="rest",
+        tags=["slot_required"],
+    )
+    payload = slot_case.model_dump(mode="json")
+    payload["gold"]["slots"]["desired_experience"] = "安静休息"
+    payload["gold"]["slots"]["object"] = "休息时段"
+    slot_case = Case.model_validate(payload)
+    quiet_case = make_case(
+        "kir-test-002",
+        Decision.NO_INTENT,
+        tags=["quiet_control"],
+    )
+    result = evaluate_run(
+        [slot_case, quiet_case],
+        [
+            prediction("kir-test-001", Decision.IN_SCOPE, "rest"),
+            prediction("kir-test-002", Decision.NO_INTENT),
+        ],
+        taxonomy,
+    )
+    assert result["slot_required_completeness"] == 0.0
+    assert result["slot_required_horizon_accuracy"] == 1.0
+    assert result["quiet_control_no_intent_recall"] == 1.0
+
+
+def test_hard_negative_reports_competing_intent_hits(
+    make_case: Callable[..., Case],
+) -> None:
+    taxonomy = load_taxonomy(Path("configs/kindred-activity-intents-v1.yaml"))
+    case = make_case(
+        "kir-test-001",
+        Decision.NO_INTENT,
+        tags=["hard_negative"],
+        hard_negative_against=["rest"],
+    )
+    result = evaluate_run([case], [prediction("kir-test-001", Decision.IN_SCOPE, "rest")], taxonomy)
+    assert result["hard_negative_target_hit_count"] == 1
+    assert result["hard_negative_target_hit_rate"] == 1.0

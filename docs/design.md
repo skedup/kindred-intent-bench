@@ -292,26 +292,44 @@ Pilot 只支持受控比较和作品集结论，不支持宣称生产效果或�
 
 ```text
 single_turn / multi_turn
+multi_turn_override / multi_turn_recency / multi_turn_resolution / multi_turn_reconsideration
 near_oos / far_oos
 hard_negative
-weak_model_trap
+hypothesized_weak_model_probe
 context_distractor
+context_control
 brandless_xhs
 rest_eat_confusion
 slot_required
 quiet_control
 ```
 
-最低覆盖：
+Pilot 精确覆盖：
 
-- multi-turn ≥ 40；
-- hard-negative ≥ 40；
-- context-distractor ≥ 24；
-- weak-model trap ≥ 32；
-- brandless XHS ≥ 8；
-- rest/eat confusion ≥ 16。
+- multi-turn = 40；
+- 四种 multi-turn pattern 各 10；
+- hard-negative = 40（near-OOS 16 + no-intent 16 + ambiguous 8）；
+- context-distractor = 24，并有 24 条一一对应的 context-control；
+- hypothesized weak-model probe = 40；
+- brandless XHS = 8；
+- rest/eat confusion = 16。
 
 这些是诊断切片，不是额外类别。最终报告必须同时展示整体和切片结果，避免总体分数掩盖长尾问题。
+所有 tag 统一输出 `case_count / test cluster_count / HEM / decision accuracy`；只有预登记为 verdict required
+domain 的 full-test HEM、Gold-in-scope、near-OOS 和 no-intent 计算正式 paired cluster-bootstrap CI。其他小切片
+只作描述性诊断，并报告交集，不能把重叠样本累计成多份独立证据：
+
+| slice | 专项读数 | 结论边界 |
+|---|---|---|
+| multi-turn | HEM、decision accuracy | 描述性；检查跨轮 evidence grounding |
+| near-OOS | OOS recall、sibling false-reject | required CI domain |
+| far-OOS | OOS recall | 描述性基础拒识对照 |
+| hard-negative | decision accuracy、对 `hard_negative_against` 的误命中 | 描述性；不是新 Gold 类 |
+| hypothesized weak-model probe | HEM、decision accuracy | 三个组件切片的汇总，不作独立效果主张 |
+| context pair | flip、adverse flip、error delta | 配对诊断；verdict 仍读取预登记 error-count 条件 |
+| brandless XHS | `play_xiaohongshu` recall | 描述性语义泛化 |
+| rest/eat confusion | HEM、四类 decision confusion | 描述性坍缩诊断 |
+| slot-required / quiet-control | completeness / no-intent recall | 按对应主合同报告 |
 
 ### 4.3 样本 schema
 
@@ -322,8 +340,8 @@ quiet_control
   "context": {
     "state_summary": "晚饭后在家，没有明显疲惫",
     "conversation": [
-      {"role": "assistant", "content": "画完了。现在想随手看看别人最近分享的生活。"},
-      {"role": "user", "content": "那就看看吧。"}
+      {"role": "user", "content": "接下来你怎么安排？"},
+      {"role": "assistant", "content": "画完了。现在想随手看看别人最近分享的生活。"}
     ],
     "recent_activities": ["create_picture"]
   },
@@ -338,7 +356,14 @@ quiet_control
       "horizon": "now"
     }
   },
-  "tags": ["multi_turn", "brandless_xhs", "weak_model_trap"],
+  "tags": [
+    "multi_turn",
+    "multi_turn_resolution",
+    "brandless_xhs",
+    "hypothesized_weak_model_probe"
+  ],
+  "hard_negative_against": [],
+  "context_perturbation": null,
   "scenario_family_id": "post_creation_next_action",
   "contrast_group_id": "browse_vs_create",
   "paraphrase_cluster_id": "browse_public_life_03",
@@ -353,6 +378,8 @@ quiet_control
 
 `gold.evidence_quote` 是输入中实际可观察内容的窄引用，便于审计 Gold 是否有依据；它不能由标注者在
 输入之外补写一个不存在的欲望，也**绝不传给 baseline**。Runner 只把 `context` 交给模型。
+`context_perturbation` 是 control/distractor pair 的评测元数据，登记背景前缀与新增 recent activities；两侧
+共享该字段，validator 要求 distractor 精确等于向 control 应用登记 delta。非 context pair 固定为 `null`。
 `annotation_note` 说明标签边界，不包含模型应复现的长推理。
 
 ### 4.4 标注与质量
@@ -531,7 +558,7 @@ Hugging Face 训练、GPU 环境、公共数据适配和生产 runtime。
 | per-intent recall | 小众 Activity 是否真的可达 |
 | horizon accuracy / slot completeness | 受控字段是否正确、完整 |
 | semantic-preservation audit | Pilot 固定 24 条、扩展固定 40 条，人工审查动作、对象与时间范围是否被保留 |
-| context-distractor consistency | 天气、历史等非意图事实是否错误覆盖明确 evidence |
+| context-distractor paired consistency | 增加一个受控背景事实后是否发生 prediction flip 或新增错误 |
 | schema invalid rate | 输出合同是否稳定 |
 | repeat instability | 同场景重复调用是否翻转 decision/intent |
 | P50/P95 latency | 双阶段的实际延迟代价 |
@@ -566,8 +593,14 @@ Pilot 不报告 risk-coverage curve：统一 prediction schema 没有跨 B0/B1/L
   错误 intent 或 invalid 都使 Gold intent 产生 false negative，缺类仍按 `zero_division=0`；
 - near-OOS recall 在 `near_oos` Gold slice 上计算；sibling-ID false-reject rate 在与 near-OOS 共享
   `contrast_group_id` 且 target 位于其 `near_oos_sibling_intents` 的 in-scope case 上计算；
-- `context_distractor_error_count` 是带 `context_distractor` tag 且 HEM=0 的 Gold case 数；
+- `context_distractor_error_count` 与 `context_control_error_count` 分别统计配对两侧 HEM=0 的数量；同时报告
+  pair count、prediction flip rate、control 正确但 distractor 错误的 adverse-flip rate，以及两侧 error delta；
   `schema_invalid_count` 是完整 Gold 全集中的 schema-invalid prediction 数；
+- `hard_negative_target_hit_rate` 是 hard-negative 被预测成 `in_scope` 且 target 命中该 case
+  `hard_negative_against` 的比例；所有诊断 tag 还输出 decision confusion 与完整 slice overlap matrix；
+- `slot_required_completeness` 要求成功 prediction 对 Gold 中非空的 `desired_experience/object` 给出非空值；
+  `slot_required_horizon_accuracy` 要求 horizon 与 Gold 一致；`quiet_control_no_intent_recall` 统计 quiet-control
+  被正确拒识为 `no_intent` 的比例；
 - B2b/B3 token 差异按每个模型分别计算：令 `T` 为完整 Gold 全集所有实际调用（包含 retry 和失败调用）的
   billed input+output token 总和，差异率为 `abs(T_B3-T_B2b) / max(T_B2b, 1)`；任何调用缺 usage metadata
   都使预算合同无效并判 inconclusive；

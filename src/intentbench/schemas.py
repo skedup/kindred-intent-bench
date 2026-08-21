@@ -20,6 +20,31 @@ INTENT_NAMES: tuple[str, ...] = (
     "visit_cultural_place",
 )
 
+MULTI_TURN_PATTERN_TAGS: tuple[str, ...] = (
+    "multi_turn_override",
+    "multi_turn_recency",
+    "multi_turn_resolution",
+    "multi_turn_reconsideration",
+)
+WEAK_MODEL_PROBE_COMPONENT_TAGS: frozenset[str] = frozenset(
+    {"near_oos", "brandless_xhs", "rest_eat_confusion"}
+)
+DIAGNOSTIC_SLICE_TAGS: tuple[str, ...] = (
+    "single_turn",
+    "multi_turn",
+    *MULTI_TURN_PATTERN_TAGS,
+    "near_oos",
+    "far_oos",
+    "hard_negative",
+    "hypothesized_weak_model_probe",
+    "context_distractor",
+    "context_control",
+    "brandless_xhs",
+    "rest_eat_confusion",
+    "slot_required",
+    "quiet_control",
+)
+
 
 class StrictModel(BaseModel):
     """Reject silent contract drift in every serialized artifact."""
@@ -75,6 +100,20 @@ class Context(StrictModel):
     recent_activities: list[str] = Field(default_factory=list)
 
 
+class ContextPerturbation(StrictModel):
+    """A registered background-only delta shared by a context pair."""
+
+    id: str = Field(pattern=r"^[a-z0-9][a-z0-9-]{2,79}$")
+    state_summary_prefix: str = Field(min_length=1)
+    recent_activities_added: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_added_activities(self) -> ContextPerturbation:
+        if len(self.recent_activities_added) != len(set(self.recent_activities_added)):
+            raise ValueError("context perturbation activities must be unique")
+        return self
+
+
 class Gold(StrictModel):
     decision: Decision
     target_intent: str | None
@@ -100,12 +139,66 @@ def normalize_evidence_text(value: str) -> str:
     return unicodedata.normalize("NFKC", value).replace("\r\n", "\n").replace("\r", "\n")
 
 
+def validate_diagnostic_tag_contract(
+    *,
+    tags: list[str],
+    gold: Gold,
+    hard_negative_against: list[str],
+    context_perturbation: ContextPerturbation | None,
+) -> None:
+    """Validate per-case diagnostic semantics shared by drafts and formal cases."""
+
+    if len(tags) != len(set(tags)):
+        raise ValueError("diagnostic tags must be unique")
+    tag_set = set(tags)
+
+    context_tags = {"context_control", "context_distractor"} & tag_set
+    if len(context_tags) > 1:
+        raise ValueError("a case cannot be both context control and distractor")
+    if bool(context_tags) != (context_perturbation is not None):
+        raise ValueError("context pair tags require exactly one registered perturbation")
+
+    is_near_oos = "near_oos" in tag_set
+    if is_near_oos:
+        if gold.decision is not Decision.OOS:
+            raise ValueError("near_oos tag requires Gold decision=oos")
+        if not gold.near_oos_sibling_intents:
+            raise ValueError("near_oos requires at least one sibling intent")
+        if "hard_negative" not in tag_set:
+            raise ValueError("near_oos must also be a hard_negative")
+    elif gold.near_oos_sibling_intents:
+        raise ValueError("only near_oos cases may declare sibling intents")
+
+    if len(hard_negative_against) != len(set(hard_negative_against)):
+        raise ValueError("hard_negative_against must be unique")
+    if "hard_negative" in tag_set:
+        if not hard_negative_against:
+            raise ValueError("hard_negative requires at least one competing intent")
+        if gold.decision is Decision.IN_SCOPE:
+            raise ValueError("hard_negative cannot use in_scope Gold")
+        if gold.decision is Decision.AMBIGUOUS and len(hard_negative_against) < 2:
+            raise ValueError("ambiguous hard_negative requires at least two competing intents")
+    elif hard_negative_against:
+        raise ValueError("only hard_negative cases may declare competing intents")
+    if is_near_oos and set(hard_negative_against) != set(gold.near_oos_sibling_intents):
+        raise ValueError("near_oos hard-negative competitors must equal sibling intents")
+
+    is_probe = "hypothesized_weak_model_probe" in tag_set
+    has_probe_component = bool(WEAK_MODEL_PROBE_COMPONENT_TAGS & tag_set)
+    if is_probe != has_probe_component:
+        raise ValueError("hypothesized weak-model probe must equal its registered component tags")
+    if "quiet_control" in tag_set and gold.decision is not Decision.NO_INTENT:
+        raise ValueError("quiet_control requires Gold decision=no_intent")
+
+
 class Case(StrictModel):
     id: str = Field(pattern=r"^[a-z0-9][a-z0-9-]{2,79}$")
     split: Split
     context: Context
     gold: Gold
     tags: list[str] = Field(default_factory=list)
+    hard_negative_against: list[str] = Field(default_factory=list)
+    context_perturbation: ContextPerturbation | None = None
     scenario_family_id: str = Field(min_length=1)
     contrast_group_id: str = Field(min_length=1)
     paraphrase_cluster_id: str = Field(min_length=1)
@@ -126,16 +219,12 @@ class Case(StrictModel):
                 "gold.evidence_quote must be a normalized contiguous context substring"
             )
 
-        is_near_oos = "near_oos" in self.tags
-        if is_near_oos:
-            if self.gold.decision is not Decision.OOS:
-                raise ValueError("near_oos tag requires Gold decision=oos")
-            if not self.gold.near_oos_sibling_intents:
-                raise ValueError("near_oos requires at least one sibling intent")
-            if not self.contrast_group_id:
-                raise ValueError("near_oos requires contrast_group_id")
-        elif self.gold.near_oos_sibling_intents:
-            raise ValueError("only near_oos cases may declare sibling intents")
+        validate_diagnostic_tag_contract(
+            tags=self.tags,
+            gold=self.gold,
+            hard_negative_against=self.hard_negative_against,
+            context_perturbation=self.context_perturbation,
+        )
 
         if (self.split_group_id is None) != (self.bootstrap_cluster_id is None):
             raise ValueError("split_group_id and bootstrap_cluster_id must be assigned together")

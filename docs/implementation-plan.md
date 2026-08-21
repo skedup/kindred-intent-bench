@@ -195,8 +195,9 @@ IE1.1 的 guideline fixtures 使用 `guide-*` ID 且没有 case/split 身份，�
 - [x] 建立 160 条 pre-split 候选：`in_scope=80`（8 intents × 10）；
 - [x] `oos=32`：far 16 + near 16；
 - [x] `no_intent=24`、`ambiguous=24`；
-- [x] 满足 multi-turn、hard-negative、context-distractor、weak-model trap、brandless XHS、rest/eat confusion
-  的最低覆盖。
+- [x] 满足 multi-turn、hard-negative、context-distractor/control、hypothesized weak-model probe、brandless XHS、rest/eat confusion
+  的精确覆盖。
+- [x] 以共享 schema 固定 DraftCase/Case 的 hard-negative、probe 语义，并用显式 perturbation 校验 context pair；
 - [ ] 人工逐条复核 decision、target、evidence、slots、tags 和关系 ID；
 - [ ] 修订后写入真实 annotator/reviewer provenance，并将同意项从 pending draft materialize 为正式 Case。
 
@@ -233,7 +234,9 @@ IE1.1 的 guideline fixtures 使用 `guide-*` ID 且没有 case/split 身份，�
 #### IE2.1 确定性 evaluator
 
 - 实现 HEM、decision Macro-F1、ID intent Macro-F1、OOS/no-intent/ambiguous 指标和 per-intent recall；
-- 实现 near-OOS、sibling false reject、context distractor、schema invalid 等切片；
+- 实现 near-OOS、sibling false reject、成对 context distractor、统一 slice metrics、schema invalid 等切片；
+- 所有诊断 tag 使用同一注册表输出 case/cluster/HEM/decision 指标，并补充 slot completeness、horizon accuracy
+  与 quiet-control no-intent recall；
 - 实现按固定 label set、`zero_division=0` 和完整 Gold 全集计算的指标；
 - 实现按 `bootstrap_cluster_id` 的 paired draws、normalized confusion matrix 和确定性 badcase 选择；
 - evaluator 只消费缓存 prediction，重复计算不得调用 Provider。

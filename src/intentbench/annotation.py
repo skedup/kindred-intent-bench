@@ -12,10 +12,12 @@ from pydantic import Field, model_validator
 
 from intentbench.schemas import (
     Context,
+    ContextPerturbation,
     Decision,
     Gold,
     StrictModel,
     normalize_evidence_text,
+    validate_diagnostic_tag_contract,
 )
 from intentbench.taxonomy import load_taxonomy
 
@@ -347,6 +349,8 @@ class DraftCase(StrictModel):
     context: Context
     gold: Gold
     tags: list[str] = Field(default_factory=list)
+    hard_negative_against: list[str] = Field(default_factory=list)
+    context_perturbation: ContextPerturbation | None = None
     scenario_family_id: str = Field(min_length=1)
     contrast_group_id: str = Field(min_length=1)
     paraphrase_cluster_id: str = Field(min_length=1)
@@ -363,16 +367,12 @@ class DraftCase(StrictModel):
     def validate_draft_contract(self) -> DraftCase:
         if not _evidence_is_in_context(self.context, self.gold.evidence_quote):
             raise ValueError("draft evidence_quote must be a contiguous context substring")
-        if len(self.tags) != len(set(self.tags)):
-            raise ValueError("draft tags must be unique")
-        is_near_oos = "near_oos" in self.tags
-        if is_near_oos:
-            if self.gold.decision is not Decision.OOS:
-                raise ValueError("near_oos draft requires Gold decision=oos")
-            if not self.gold.near_oos_sibling_intents:
-                raise ValueError("near_oos draft requires sibling intents")
-        elif self.gold.near_oos_sibling_intents:
-            raise ValueError("only near_oos drafts may declare sibling intents")
+        validate_diagnostic_tag_contract(
+            tags=self.tags,
+            gold=self.gold,
+            hard_negative_against=self.hard_negative_against,
+            context_perturbation=self.context_perturbation,
+        )
         return self
 
 

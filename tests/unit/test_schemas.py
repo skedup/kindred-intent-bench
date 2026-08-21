@@ -78,8 +78,9 @@ def test_near_oos_requires_oos_siblings_and_matching_clusters(
     valid = make_case(
         "kir-test-002",
         Decision.OOS,
-        tags=["near_oos"],
+        tags=["near_oos", "hard_negative", "hypothesized_weak_model_probe"],
         siblings=["take_a_walk"],
+        hard_negative_against=["take_a_walk"],
     )
     assert valid.gold.near_oos_sibling_intents == ["take_a_walk"]
     payload = valid.model_dump()
@@ -91,6 +92,58 @@ def test_near_oos_requires_oos_siblings_and_matching_clusters(
     payload["split_group_id"] = "same"
     with pytest.raises(ValidationError, match="must equal split_group_id"):
         Case.model_validate(payload)
+
+
+def test_hard_negative_requires_explicit_competing_intents(
+    make_case: Callable[..., Case],
+) -> None:
+    valid = make_case(
+        "kir-test-003",
+        Decision.NO_INTENT,
+        tags=["hard_negative"],
+        hard_negative_against=["rest"],
+    )
+    assert valid.hard_negative_against == ["rest"]
+    payload = valid.model_dump()
+    payload["hard_negative_against"] = []
+    with pytest.raises(ValidationError, match="requires at least one competing intent"):
+        Case.model_validate(payload)
+
+
+def test_formal_case_rejects_ambiguous_hard_negative_with_one_competitor(
+    make_case: Callable[..., Case],
+) -> None:
+    with pytest.raises(ValidationError, match="at least two competing intents"):
+        make_case(
+            "kir-test-004",
+            Decision.AMBIGUOUS,
+            tags=["hard_negative"],
+            hard_negative_against=["rest"],
+        )
+
+
+def test_formal_case_rejects_arbitrary_hypothesized_probe(
+    make_case: Callable[..., Case],
+) -> None:
+    with pytest.raises(ValidationError, match="registered component tags"):
+        make_case(
+            "kir-test-005",
+            Decision.NO_INTENT,
+            tags=["hypothesized_weak_model_probe"],
+        )
+
+
+def test_formal_near_oos_competitors_must_equal_siblings(
+    make_case: Callable[..., Case],
+) -> None:
+    with pytest.raises(ValidationError, match="must equal sibling intents"):
+        make_case(
+            "kir-test-006",
+            Decision.OOS,
+            tags=["near_oos", "hard_negative", "hypothesized_weak_model_probe"],
+            siblings=["take_a_walk"],
+            hard_negative_against=["rest"],
+        )
 
 
 def test_run_manifest_carries_reproduction_and_budget_identity() -> None:

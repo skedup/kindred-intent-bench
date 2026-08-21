@@ -7,6 +7,8 @@
     "evidence_quote 必须逐字取自 state_summary 或 conversation 中的一段连续文本。",
     "将 draft-template-* ID 和所有 replace-* 占位符换成草稿自己的 ID；关系 ID 只表达真实的场景、对照或改写关系。",
     "near_oos case 必须添加 near_oos tag、填写 sibling intent，并与对应 in-scope sibling 共用 contrast_group_id。",
+    "hard_negative case 必须填写 hard_negative_against；非 hard-negative 保持空列表。",
+    "context pair 两侧必须共享同一个 context_perturbation；非 context pair 保持 null。",
     "草稿不填写 split、split_group_id 或 bootstrap_cluster_id；它们由 IE1.3 的 materialization 与分组程序生成。",
     "只有完成 guideline 自检和独立复核后才能把 adjudication_status 从 draft 改为 reviewed；有分歧则按仲裁流程处理。"
   ],
@@ -31,9 +33,12 @@
       }
     },
     "tags": [
+      "single_turn",
       "brandless_xhs",
-      "weak_model_trap"
+      "hypothesized_weak_model_probe"
     ],
+    "hard_negative_against": [],
+    "context_perturbation": null,
     "scenario_family_id": "replace-scenario-family",
     "contrast_group_id": "replace-contrast-group",
     "paraphrase_cluster_id": "replace-paraphrase-cluster",

@@ -54,14 +54,27 @@ def test_candidate_artifact_has_exact_ie12_distribution() -> None:
             "take_a_walk": 10,
             "visit_cultural_place": 10,
         },
+        "multi_turn_pattern_counts": {
+            "multi_turn_override": 10,
+            "multi_turn_recency": 10,
+            "multi_turn_reconsideration": 10,
+            "multi_turn_resolution": 10,
+        },
         "oos_partition": {"far_oos": 16, "near_oos": 16},
         "required_tag_counts": {
             "brandless_xhs": 8,
+            "context_control": 24,
             "context_distractor": 24,
             "hard_negative": 40,
-            "multi_turn": 44,
+            "hypothesized_weak_model_probe": 40,
+            "multi_turn": 40,
             "rest_eat_confusion": 16,
-            "weak_model_trap": 40,
+        },
+        "slice_overlap_counts": {
+            "hard_negative&hypothesized_weak_model_probe": 24,
+            "multi_turn&context_control": 12,
+            "multi_turn&context_distractor": 12,
+            "near_oos&hard_negative&hypothesized_weak_model_probe": 16,
         },
     }
 
@@ -118,6 +131,80 @@ def test_candidate_validator_rejects_invalid_brandless_case() -> None:
     assert isinstance(context, dict)
     context["state_summary"] = f"{context['state_summary']} 小红书"
     with pytest.raises(CandidateDatasetError, match="invalid brandless_xhs"):
+        validate_candidate_cases(parse_candidates(payloads), load_taxonomy(TAXONOMY_PATH))
+
+
+def test_candidate_validator_rejects_arbitrary_weak_model_probe_tags() -> None:
+    payloads = candidate_payloads()
+    tagged = next(item for item in payloads if "hypothesized_weak_model_probe" in item["tags"])
+    untagged = next(
+        item
+        for item in payloads
+        if "hypothesized_weak_model_probe" not in item["tags"]
+        and not ({"near_oos", "brandless_xhs", "rest_eat_confusion"} & set(item["tags"]))
+    )
+    tagged["tags"].remove("hypothesized_weak_model_probe")
+    untagged["tags"].append("hypothesized_weak_model_probe")
+    with pytest.raises(ValidationError, match="registered component tags"):
+        parse_candidates(payloads)
+
+
+def test_candidate_validator_rejects_hard_negative_composition_drift() -> None:
+    payloads = candidate_payloads()
+    no_intent_pair = [
+        item for item in payloads if item["contrast_group_id"] == "contrast-context-no-intent-5"
+    ]
+    ambiguous_cases = [
+        item
+        for item in payloads
+        if item["gold"]["decision"] == "ambiguous" and "hard_negative" not in item["tags"]
+    ][:2]
+    assert len(no_intent_pair) == len(ambiguous_cases) == 2
+    for item in no_intent_pair:
+        item["tags"].remove("hard_negative")
+        item["hard_negative_against"] = []
+    for item in ambiguous_cases:
+        item["tags"].append("hard_negative")
+        item["hard_negative_against"] = ["rest", "take_a_walk"]
+    with pytest.raises(CandidateDatasetError, match="decision composition"):
+        validate_candidate_cases(parse_candidates(payloads), load_taxonomy(TAXONOMY_PATH))
+
+
+def test_candidate_validator_rejects_context_pair_semantic_drift() -> None:
+    payloads = candidate_payloads()
+    control = next(item for item in payloads if "context_control" in item["tags"])
+    control["gold"]["slots"]["object"] = "被偷偷改写的对象"
+    with pytest.raises(CandidateDatasetError, match="changes more than background"):
+        validate_candidate_cases(parse_candidates(payloads), load_taxonomy(TAXONOMY_PATH))
+
+
+def test_candidate_validator_rejects_unregistered_context_state_delta() -> None:
+    payloads = candidate_payloads()
+    distractor = next(
+        item
+        for item in payloads
+        if "context_distractor" in item["tags"] and "single_turn" in item["tags"]
+    )
+    context = distractor["context"]
+    assert isinstance(context, dict)
+    context["state_summary"] = f"{context['state_summary']}不过最终取消原计划并决定留在家里做饭。"
+    with pytest.raises(CandidateDatasetError, match="registered state delta"):
+        validate_candidate_cases(parse_candidates(payloads), load_taxonomy(TAXONOMY_PATH))
+
+
+def test_candidate_validator_rejects_decision_specific_user_cue() -> None:
+    payloads = candidate_payloads()
+    pair = [
+        item
+        for item in payloads
+        if item["contrast_group_id"] == "contrast-context-in-scope-create_picture"
+    ]
+    assert len(pair) == 2
+    for item in pair:
+        conversation = item["context"]["conversation"]
+        user_turn = next(turn for turn in conversation if turn["role"] == "user")
+        user_turn["content"] = "只在这个决策类别重复出现的提示。"
+    with pytest.raises(CandidateDatasetError, match="user cue maps to one Gold decision"):
         validate_candidate_cases(parse_candidates(payloads), load_taxonomy(TAXONOMY_PATH))
 
 

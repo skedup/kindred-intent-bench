@@ -13,7 +13,7 @@ Gold；仓库没有运行 frozen test，也没有接入 Kindred 生产路径。
 - 8-intent 版本化 taxonomy：包括 `play_xiaohongshu` 等小众 Activity；
 - Pydantic Gold / Prediction / RunManifest 合同与四类输出真值表；
 - 完整 Gold universe evaluator：missing、Provider failure、schema invalid 均计错，duplicate/extra 使 run 无效；
-- HEM、固定标签 Macro-F1、OOS/no-intent/ambiguous、near-OOS 与诊断计数；
+- HEM、固定标签 Macro-F1、OOS/no-intent/ambiguous、near-OOS、统一 slice metrics 与成对 context 指标；
 - 关系图连通分量、paired cluster bootstrap、固定 Type-7 percentile CI；
 - `promising / inconclusive / negative` 预注册确定函数；
 - dataset freeze + experiment lock 双冻结 guard；
@@ -24,7 +24,7 @@ Gold；仓库没有运行 frozen test，也没有接入 Kindred 生产路径。
 
 - 四类 decision 各 3 个正例、3 个反例、3 个仲裁例，共 36 条非数据集 guideline fixtures；
 - 8 个 intent 的 inclusion/exclusion 对照，以及每个 intent 一组 near-OOS/sibling 配对；
-- multi-turn、context-distractor、brandless XHS、rest/eat confusion 的明确标注边界；
+- multi-turn、context pair、brandless XHS、rest/eat、hard-negative 和假设性弱模型探针的明确标注边界；
 - 标注分歧、仲裁、单标注者重检和 dataset-card 七项强制披露合同；
 - 带防误用 wrapper 的 case 编写模板，以及 taxonomy 对齐的离线 validator。
 
@@ -33,7 +33,8 @@ Gold；仓库没有运行 frozen test，也没有接入 Kindred 生产路径。
 ## IE1.2 候选队列
 
 [候选数据卡](data/kir-pilot-v1/candidate-card.md)和 `candidates.jsonl` 已提供完整的 160 条审阅队列：
-`in_scope=80 / oos=32 / no_intent=24 / ambiguous=24`，并满足 8-intent、near/far OOS 和横切标签覆盖。
+`in_scope=80 / oos=32 / no_intent=24 / ambiguous=24`，并满足 8-intent、near/far OOS、24组
+context control/distractor 对照、显式 background perturbation、hard-negative竞争intent和横切标签精确覆盖。
 
 这些记录统一使用 `llm_assisted_pending_human_review + draft`，不含 split 或生成 cluster ID，不能通过正式
 `Case` schema。只有人工逐条确认、修订 provenance 后，才允许进入 IE1.3 materialization、group split 和

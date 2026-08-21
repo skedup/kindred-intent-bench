@@ -148,7 +148,7 @@ near-OOS 是“已经具体，但只差一个决定性语义条件就会命中�
 
 far-OOS 则与现有 intent 没有需要特别防止的近邻混淆，例如整理房间或听播客；它不填写 sibling intent。
 
-## 5. 四个必测边界
+## 5. 六个必测边界
 
 ### 5.1 Multi-turn（`multi_turn`）
 
@@ -156,12 +156,23 @@ far-OOS 则与现有 intent 没有需要特别防止的近邻混淆，例如整�
 - 后续明确选择可以覆盖较早的候选或背景，例如下雨后说“那就在家煮面”应标 `eat_at_home`。
 - 助手提出候选不等于用户或 Kindred 已选择；“两个都行，还没决定”必须 abstain 为 `ambiguous`。
 - recent activity 或前一轮已完成动作不能自动延续；“刚画完，现在给你发消息”标联系用户。
+- 多轮样本的用户承接话术不得由 Gold decision 选择；重复出现的用户话术必须跨 decision 复用，避免标签泄漏。
+- 正式样本以 Kindred 最后一轮承载可审计 evidence；覆盖、纠正、撤回和指代等对话骨架应有明确记录，
+  相同骨架通过 `scenario_family_id` 归组，不能在 bootstrap 中伪装成独立样本。
+- Pilot 将40条样本均分为 override、recency、resolution、reconsideration 四种 pattern，每种10条；每条
+  multi-turn 必须且只能带一个对应子标签。
 
 ### 5.2 Context distractor（`context_distractor`）
 
 - 天气、时间、位置、疲惫、饥饿和 recent activity 都不能覆盖当前明确行动。
 - 只有背景事实且没有行动表达时标 `no_intent`，不能按常识推测散步、吃饭或休息。
 - 编写 hard negative 时只放一个有意义的 distractor，避免用大量噪声人为增加阅读难度。
+- 每条正式 `context_distractor` 必须有一条 `context_control`，两者共享 scenario/contrast ID、Gold、evidence、
+  slots、turn shape 和对话，只允许在背景事实或 recent activity 上出现一个受控差异。
+- pair 两侧必须共享同一个 `context_perturbation`：登记稳定 ID、添加到 `state_summary` 的背景前缀和新增的
+  `recent_activities`。distractor 必须精确等于把该 delta 应用到 control，不能额外改写前景行动。
+- `context_distractor` 与 `context_control` 各 24 条，single/multi 各占一半；报告配对 prediction flip、
+  adverse flip 和 error delta，不能只凭困难样本错误率宣称因果一致性。
 
 ### 5.3 Brandless XHS（`brandless_xhs`）
 
@@ -176,6 +187,24 @@ far-OOS 则与现有 intent 没有需要特别防止的近邻混淆，例如整�
 - “闭眼休息”“在家煮面”是明确行动，分别命中 `rest` / `eat_at_home`。
 - 两者都被明确提出但没有顺序时为 `ambiguous`；出现“先”时只标下一行动。
 - 不能以状态更强、时间更合理或标注者认为更健康为由替 Kindred 排序。
+- Pilot 恰好包含 `rest=4 / eat_at_home=4 / no_intent=4 / ambiguous=4`，并平衡为 8 条 single-turn 与
+  8 条 multi-turn，避免把 turn shape 或 context distractor 当作 rest/eat 能力。
+
+### 5.5 Hard negative（`hard_negative`）
+
+- hard negative 必须“表面接近一个或多个已知 intent，但 Gold 不是 `in_scope`”；宽泛但没有明确竞争 intent 的
+  ambiguous 话语不属于 hard negative。
+- 每条必须填写 `hard_negative_against`，列出模型可能被诱导命中的 taxonomy intent；near-OOS 时该字段必须
+  与 `near_oos_sibling_intents` 一致，ambiguous 时至少包含两个竞争 intent。
+- Pilot 构成固定为 `near-OOS 16 + no_intent 16 + ambiguous 8`，不能仅为凑数给普通负例重贴标签。
+
+### 5.6 Hypothesized weak-model probe（`hypothesized_weak_model_probe`）
+
+- 这是看 test prediction 前冻结的**假设性探针**，不是已经证明的弱模型错题。
+- Pilot 恰好是 `near_oos ∪ brandless_xhs ∪ rest_eat_confusion`，共 40 条；它只汇总三个已定义风险面，
+  不作为独立于这些切片的额外效果证据。
+- 运行后稳定失败的样本只能进入单独的 `empirical_weak_model_failure` badcase 产物；不得回写 frozen Gold tags，
+  也不得据此调换 test case。
 
 ## 6. Evidence、slots 与 Gold 真值表
 
@@ -185,6 +214,8 @@ far-OOS 则与现有 intent 没有需要特别防止的近邻混淆，例如整�
   但 annotation note 要说明为什么不能推出行动。
 - `in_scope` 必须有唯一 `target_intent`；另外三类的 target 必须为 `null`。
 - 只有 tagged near-OOS 可以填写 `near_oos_sibling_intents`；普通 OOS 和其他 decision 必须为空。
+- 只有 tagged hard-negative 可以填写 `hard_negative_against`；其中 intent 必须来自冻结 taxonomy。
+- 只有 context-control/distractor 可以填写 `context_perturbation`，且 pair 两侧必须完全相同；普通 case 填 `null`。
 - `desired_experience` 与 `object` 只抄录或短语化输入可支持的内容，不补写隐含偏好；未知填 `null`。
 - `horizon=now` 表示现在/下一步，`later` 表示明确远期，未提供时间则为 `unspecified`。horizon 不独立决定
   decision：远期具体计划也需依本规范判断是否属于当前 routing 范围。
