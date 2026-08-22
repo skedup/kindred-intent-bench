@@ -5,7 +5,8 @@ Kindred Intent Bench 是一个离线优先的 open-set intent recognition Workbe
 `oos / no_intent / ambiguous`。
 
 它不替 Kindred 决定“应该想做什么”，也不把自主选择分布是否均匀当作正确性指标。当前已完成 IE0、IE1、
-IE2，以及 IE3 的实现和 Gemini dev Prompt 选择；experiment lock 已冻结，正式 test 尚未运行。IE1.2
+IE2，以及 IE3 的实现、Gemini dev Prompt 选择、experiment freeze 和首次正式 test；下一阶段是 IE4 的
+统计结论与求职报告。IE1.2
 已从 Kindred 实际运行环境捕获 Activity/Action grounding，并完成 taxonomy
 v2 与 160 条候选校准；158 条原人工标签按完全相同 context 迁移，2 条新增边界样本也已完成人工补审。
 32 条 grounded 仲裁结果已通过 hash gate 导入；3 条 policy impact 已用 routing + open-intent 双通道解决。
@@ -155,9 +156,14 @@ Gemini dev 按一次预登记结构修订后停止调 Prompt，选择结果如�
 | B2b | v2 | 0.9792 | 0 | 309,138 |
 | B3 | v2 | 1.0000 | 0 | 245,110 |
 
-两臂 token 绝对差约 20.7%，超过预登记的 10% 严格比较门。该事实已在 test 前披露：如果 formal test 仍有
-同类差异，matrix 必须标记 `budget-confounded`，不能把 B3 的差值解释为已完成等算力因果消融。以上仍只是
-48 条 synthetic、non-blind dev 的选择结果，不是泛化准确率。
+两臂 token 绝对差约 20.7%，超过预登记的 10% 严格比较门。该事实已在 test 前披露；formal test 中 Gemini
+仍为 20.6%，matrix 已按合同标记 `budget-confounded`，没有把 B3 的差值解释为已完成等算力因果消融。以上
+dev 数字仍只是 48 条 synthetic、non-blind selection set 的结果。
+
+首次 formal run 的 7/7 LLM 格已通过完整性 checker，脱敏产物和限制见
+[IE3 frozen-test bundle](experiments/ie3-test/README.md)。primary 的 B2a/B2b/B3 HEM 分别为
+`1.0000 / 0.9911 / 0.9643`；weak 的 B2b/B3 为 `0.6696 / 0.2679`。OpenAI 两格因冻结的 routing schema
+在第二阶段全部 HTTP 400 且缺 usage，只能作为 adapter 兼容性失败，不作模型效果解释。
 
 预注册采用三 Provider、七运行产物矩阵：`gemini-3.6-flash` 是 primary，完整运行
 `B2a/B2b/B3`，且是唯一全局 verdict authority；`deepseek-v4-flash` 是低成本弱模型复现，
@@ -184,7 +190,8 @@ uv run intentbench evaluate --help
 ```
 
 以上命令不访问 LLM/embedding Provider；最后一条在已冻结仓库上执行幂等再验证并返回 `unchanged`。正式
-test runner 必须通过双冻结和 clean-commit guard；dataset 与 IE3 experiment 均已 frozen，正式结果尚未生成。
+test runner 必须通过双冻结和 clean-commit guard；dataset 与 IE3 experiment 均已 frozen，首次正式结果已
+生成并保留，后续不会通过重采样或改 Prompt 覆盖原结果。
 
 ## 显式 Provider smoke
 

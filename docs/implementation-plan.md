@@ -1,6 +1,6 @@
 # Kindred Intent Bench 实施计划
 
-> Status: `IE0 complete / IE1 complete and dataset frozen / IE2 complete / IE3 implementation, dev selection, and experiment freeze complete / formal test pending`
+> Status: `IE0 complete / IE1 complete and dataset frozen / IE2 complete / IE3 complete / IE4 next`
 >
 > 日期：2026-08-23
 >
@@ -356,7 +356,7 @@ Gemini dev 已完成一次预登记结构修订并停止调 Prompt：B2b v2 为 
 - 预登记 Gemini primary、DeepSeek weak 与 OpenAI cross-provider-reference；只有 primary 有全局 verdict
   authority，后两者只做各自模型内的 `B3-B2b` 复现；
 - [x] 完整运行 Gemini dev sanity check 并按一次修订预算停止调 Prompt；
-- [ ] 在 experiment freeze 后对 frozen test 执行版本化 run；
+- [x] 在 experiment freeze 后对 frozen test 执行版本化 run；
 - [x] `run --split test` 必须先验证 `freeze-manifest.json` 与 experiment lock 的全部 hash，任一缺失或不匹配就拒绝；
 - [x] 报告 B2b/B3 实际总 token 差异；超过 10% 时自动标记 `budget-confounded`。
 

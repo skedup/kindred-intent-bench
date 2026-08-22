@@ -19,11 +19,13 @@ htmlcov/
 provider-responses/
 *.provider-response.json
 
-# Ad-hoc outputs stay local; registered IE3 dev-selection evidence and reduced references are kept.
+# Ad-hoc outputs stay local; registered IE3 dev/test evidence and reduced references are kept.
 experiments/*
 !experiments/.gitkeep
 !experiments/ie3-dev/
 !experiments/ie3-dev/**
+!experiments/ie3-test/
+!experiments/ie3-test/**
 !experiments/reference/
 experiments/reference/*
 !experiments/reference/kir-pilot-v2-ie2-final/

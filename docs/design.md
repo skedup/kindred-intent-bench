@@ -1,6 +1,6 @@
 # 求职优先的意图识别 Workbench：数据、基线、OOS 与评测闭环
 
-> ✅ **Status**: `IE0 complete / IE1 complete and dataset frozen / IE2 complete / IE3 implementation, dev selection, and experiment freeze complete / formal test pending`
+> ✅ **Status**: `IE0 complete / IE1 complete and dataset frozen / IE2 complete / IE3 complete / IE4 next`
 >
 > 日期：2026-08-23
 >
