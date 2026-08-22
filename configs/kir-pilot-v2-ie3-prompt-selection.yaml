@@ -1,0 +1,98 @@
+schema_version: 1
+receipt_id: kir-pilot-v2-ie3-prompt-selection-v1
+dataset_version: kir-pilot-v2
+split: dev
+dev_sha256: c4807ed66def5fe04402c8ee5c7d1a5460965dfc32f063a3f272b522fceb03c5
+provider: google_generative_language
+model: gemini-3.6-flash
+revision_budget: 1
+selection_order:
+  - schema_invalid_count_asc
+  - failed_prediction_count_asc
+  - hierarchical_exact_match_desc
+  - decision_macro_f1_desc
+arms:
+  B2b:
+    selected_version: v2
+    candidates:
+      - version: v1
+        prompt_sha256:
+          verifier: fc96826c826cfa5b6311c9f3b908fe2850db6b19b83d0f04be9ff21df83a0cf2
+        prediction_sha256: ddd9a4c721be6dc063ce3153e2655461bbfdc4f5b55c21309d3156306f37bafb
+        run_manifest_sha256: 8aa7d8874d3cf6fd0c706e4c7b6a6404fd45ea224156b4f43b9e00d31db0c446
+        hierarchical_exact_match: 0.9791666666666666
+        decision_macro_f1: 0.9807692307692307
+        schema_invalid_count: 1
+        failed_prediction_count: 1
+        badcase_ids: [kir-pilot-v2-0158]
+        provider_calls: 48
+        input_tokens: 300123
+        output_tokens: 7862
+        estimated_cost_usd: 0.25457475
+      - version: v2
+        prompt_sha256:
+          verifier: 59505bac1ef8d4cd1f91c14d71113b0fcea914eb417b52b873e8f765630f0fd6
+        prediction_sha256: a0cefe680e94c9d4aab449f88eade1ff8c72abb74dd44486adedc50ec7ebc887
+        run_manifest_sha256: a78a9e2b62f8d4e0c1d9ab455c07b8d62b7399d748ae4a24325e4e6ac8675632
+        hierarchical_exact_match: 0.9791666666666666
+        decision_macro_f1: 0.9641025641025641
+        schema_invalid_count: 0
+        failed_prediction_count: 0
+        badcase_ids: [kir-pilot-v2-0156]
+        provider_calls: 48
+        input_tokens: 301803
+        output_tokens: 7335
+        estimated_cost_usd: 0.2538585
+    revision_scope:
+      - Enforce candidate_intents length as zero or at least two in Prompt and response schema.
+      - Preserve mixed in-scope/OOS ambiguity without emitting a single taxonomy candidate.
+    stopping_rule: >-
+      Select v2 because it removes schema-invalid output; stop after the single registered revision
+      even though one subjective ambiguous/no-intent boundary disagreement remains.
+  B3:
+    selected_version: v2
+    candidates:
+      - version: v1
+        prompt_sha256:
+          stage_a: 1bb6601bdf57c66eed79ca59471661e76195c2ca4ea2732e7249586af497bdf4
+          stage_b: 45e393e2e29a48da0f4ca8e20a310cd3b6b2d3fe86766f1ec5925cc6e9224fd1
+        prediction_sha256: f29c118bbe3bb9474684eb8f5f9bc8031d7b8855be1442474d9a8bd968d00423
+        run_manifest_sha256: 5b094bf796584fd3a029d98d989b2b43636ad9f0d20918729cc976379d954919
+        hierarchical_exact_match: 0.9375
+        decision_macro_f1: 0.9504500818330605
+        schema_invalid_count: 1
+        failed_prediction_count: 2
+        badcase_ids:
+          - kir-pilot-v2-0025
+          - kir-pilot-v2-0058
+          - kir-pilot-v2-0086
+          - kir-pilot-v2-0158
+        provider_calls: 95
+        input_tokens: 217461
+        output_tokens: 6014
+        estimated_cost_usd: 0.18564825
+      - version: v2
+        prompt_sha256:
+          stage_a: 0c23bfa83e0e2227e1c3361851b0559e8fc90613a4747f47182453dc7308e796
+          stage_b: aabc874dd0fab5abf6995db29872735855ecda0bc3242e7f5229b48e25b1d7e6
+        prediction_sha256: 21e1a29498feb67f9714b600c4f87b50891c5c5cb0ff0bd01c4690f9b7172c68
+        run_manifest_sha256: a8a202916d033066a5264f0e2dada92ad4e25cd0ab58f3d07e8c786008ed4765
+        hierarchical_exact_match: 1.0
+        decision_macro_f1: 1.0
+        schema_invalid_count: 0
+        failed_prediction_count: 0
+        badcase_ids: []
+        provider_calls: 96
+        input_tokens: 237712
+        output_tokens: 7398
+        estimated_cost_usd: 0.2060265
+    revision_scope:
+      - Add qualifiers to preserve routing-critical location, modality, negation, completion, and recency.
+      - Treat a current non-catalog action as clear even when a nearby catalog action is negated.
+      - Enforce candidate_intents length as zero or at least two.
+    stopping_rule: >-
+      Select v2 by the registered order and stop after the single structural revision; do not make
+      further dev changes before frozen test.
+interpretation_limit: >-
+  This receipt describes non-blind dev selection on a small synthetic set. The v2 dev scores are
+  selection evidence, not frozen-test performance or production accuracy.

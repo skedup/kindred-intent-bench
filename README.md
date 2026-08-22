@@ -4,8 +4,9 @@ Kindred Intent Bench 是一个离线优先的 open-set intent recognition Workbe
 在输入已经包含可观察意图证据时，能否把下一行动正确路由到 Activity taxonomy，同时显式处理
 `oos / no_intent / ambiguous`。
 
-它不替 Kindred 决定“应该想做什么”，也不把自主选择分布是否均匀当作正确性指标。当前已完成 IE0、IE1
-与 IE2，下一阶段是 IE3 的等调用 B2b/B3 消融。IE1.2 已从 Kindred 实际运行环境捕获 Activity/Action grounding，并完成 taxonomy
+它不替 Kindred 决定“应该想做什么”，也不把自主选择分布是否均匀当作正确性指标。当前已完成 IE0、IE1、
+IE2，以及 IE3 的实现和 Gemini dev Prompt 选择；experiment lock 仍未冻结，正式 test 尚未运行。IE1.2
+已从 Kindred 实际运行环境捕获 Activity/Action grounding，并完成 taxonomy
 v2 与 160 条候选校准；158 条原人工标签按完全相同 context 迁移，2 条新增边界样本也已完成人工补审。
 32 条 grounded 仲裁结果已通过 hash gate 导入；3 条 policy impact 已用 routing + open-intent 双通道解决。
 160 条带 reviewer/adjudicator provenance 的 Gold 已完成 IE1.3 group-safe split：48 条 dev、112 条 frozen
@@ -138,6 +139,25 @@ schema、model、adapter revision、structured-output mode、512 上限和 gener
 合同；不再接受调用方提供的独立 request hash。48 条离线重跑实测 48 hits、0 Provider calls、产物
 `unchanged`，这证明流水线和 artifact 可复现，不证明模型重复采样稳定。B2b call-1 后续必须通过只读
 `require_existing` 复用 reference bundle；缺失或身份漂移时直接失败，不能回退到网络调用。
+
+## IE3 dev 选择与正式运行框架
+
+IE3 已实现 B2b 同通道 verifier、B3 taxonomy-free `FormedIntention` → taxonomy grounding、正式 test 的双冻结
+与 clean-commit 门禁，以及七格 LLM matrix checker。B3 阶段 A 的自由文本意图会写入
+`formed-intentions.jsonl`；即使暂时不能映射到 Activity，用户仍可通过该日志观察模型表达的行动、对象、
+体验、限定条件、备选行动与 horizon。
+
+Gemini dev 按一次预登记结构修订后停止调 Prompt，选择结果如下；完整脱敏证据见
+[IE3 dev selection bundle](experiments/ie3-dev/README.md)。
+
+| arm | selected Prompt | dev HEM | schema invalid | total tokens |
+|---|---:|---:|---:|---:|
+| B2b | v2 | 0.9792 | 0 | 309,138 |
+| B3 | v2 | 1.0000 | 0 | 245,110 |
+
+两臂 token 绝对差约 20.7%，超过预登记的 10% 严格比较门。该事实已在 test 前披露：如果 formal test 仍有
+同类差异，matrix 必须标记 `budget-confounded`，不能把 B3 的差值解释为已完成等算力因果消融。以上仍只是
+48 条 synthetic、non-blind dev 的选择结果，不是泛化准确率。
 
 预注册采用三 Provider、七运行产物矩阵：`gemini-3.6-flash` 是 primary，完整运行
 `B2a/B2b/B3`，且是唯一全局 verdict authority；`deepseek-v4-flash` 是低成本弱模型复现，

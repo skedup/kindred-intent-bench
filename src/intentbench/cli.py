@@ -12,12 +12,15 @@ from typing import ParamSpec, TypeVar
 import click
 
 from intentbench import __version__
-from intentbench.adapters.base import ProviderError
+from intentbench.adapters.base import ProviderError, StructuredGenerationClient
+from intentbench.adapters.deepseek import DeepSeekChatClient
 from intentbench.adapters.google import GoogleGenerativeLanguageClient
+from intentbench.adapters.openai import OpenAIResponsesClient
 from intentbench.annotation import validate_annotation_artifacts
 from intentbench.baselines import BaselineRunError, run_b0_dev, run_b1_dev, run_b2a_dev
 from intentbench.dataset import CandidateDatasetError, validate_candidate_artifact
 from intentbench.embedding import EmbeddingCacheError
+from intentbench.formal_runs import FormalRunError, run_b0_test, run_b1_test, run_b2a_test
 from intentbench.freeze import FreezeGuardError, verify_test_guard
 from intentbench.generation_cache import GenerationCacheError
 from intentbench.grounding import (
@@ -26,6 +29,7 @@ from intentbench.grounding import (
     validate_grounding_alignment,
 )
 from intentbench.materialize import MaterializationContractError, materialize_adjudicated_cases
+from intentbench.matrix import MatrixValidationError, build_seven_run_matrix
 from intentbench.providers import (
     READINESS_ROLES,
     load_readiness_inputs,
@@ -60,6 +64,15 @@ from intentbench.review import (
 from intentbench.schemas import Decision, Horizon, Slots, Taxonomy
 from intentbench.split import DatasetSplitError, split_and_freeze_dataset
 from intentbench.taxonomy import load_taxonomy
+from intentbench.two_stage import (
+    LLM_ROLE_NAMES,
+    prepare_one_stage_dev_cache,
+    prepare_one_stage_test_cache,
+    run_b2b_dev,
+    run_b2b_test,
+    run_b3_dev,
+    run_b3_test,
+)
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -1027,6 +1040,592 @@ def baseline_b2a_dev(
                 repository_root=repository_root,
             )
     except (OSError, BaselineRunError, GenerationCacheError, ProviderError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(json.dumps(report, ensure_ascii=False, sort_keys=True))
+
+
+@main.group("ie3")
+def ie3_group() -> None:
+    """Run registered IE3 dev selection and frozen-test experiments."""
+
+
+def _ie3_role_option(function: Callable[P, R]) -> Callable[P, R]:
+    return click.option(
+        "--role",
+        type=click.Choice(LLM_ROLE_NAMES, case_sensitive=True),
+        required=True,
+    )(function)
+
+
+def _ie3_dev_options(function: Callable[P, R]) -> Callable[P, R]:
+    function = click.option(
+        "--experiment",
+        "experiment_path",
+        type=click.Path(path_type=Path, exists=True, dir_okay=False),
+        default=Path("configs/kir-pilot-v2-ie3-experiment.yaml"),
+        show_default=True,
+    )(function)
+    return _frozen_dev_options(function)
+
+
+def _ie3_client(experiment_path: Path, role: str) -> tuple[StructuredGenerationClient, str]:
+    models, _fixture = load_readiness_inputs(
+        experiment_path,
+        Path("tests/fixtures/provider-smoke.json"),
+    )
+    spec = {
+        "primary_decision": models.primary_decision,
+        "weak_decision": models.weak_decision,
+        "cross_provider_reference": models.cross_provider_reference,
+    }[role]
+    api_key = os.environ.get(spec.api_key_env)
+    if not api_key:
+        raise BaselineRunError(f"missing {role} credential environment: {spec.api_key_env}")
+    if spec.provider == "google_generative_language":
+        return (
+            GoogleGenerativeLanguageClient(
+                api_key=api_key,
+                base_url=spec.base_url,
+                timeout_seconds=spec.timeout_seconds,
+            ),
+            spec.model,
+        )
+    if spec.provider == "deepseek":
+        return (
+            DeepSeekChatClient(
+                api_key=api_key,
+                base_url=spec.base_url,
+                timeout_seconds=spec.timeout_seconds,
+            ),
+            spec.model,
+        )
+    return (
+        OpenAIResponsesClient(
+            api_key=api_key,
+            base_url=spec.base_url,
+            timeout_seconds=spec.timeout_seconds,
+        ),
+        spec.model,
+    )
+
+
+@ie3_group.command("one-stage-cache-dev")
+@_ie3_dev_options
+@_ie3_role_option
+@click.option(
+    "--cache-dir",
+    type=click.Path(path_type=Path, file_okay=False),
+    required=True,
+)
+def ie3_one_stage_cache_dev(
+    cases_path: Path,
+    taxonomy_path: Path,
+    dataset_manifest_path: Path,
+    repository_root: Path,
+    experiment_path: Path,
+    role: str,
+    cache_dir: Path,
+) -> None:
+    """Populate B2b call-1 cache without creating a secondary B2a scoring arm."""
+
+    client, _model = _ie3_client(experiment_path, role)
+    try:
+        report = prepare_one_stage_dev_cache(
+            client=client,
+            role=role,  # type: ignore[arg-type]
+            cache_dir=cache_dir,
+            cases_path=cases_path,
+            taxonomy_path=taxonomy_path,
+            dataset_manifest_path=dataset_manifest_path,
+            experiment_path=experiment_path,
+            repository_root=repository_root,
+        )
+    except (OSError, BaselineRunError, GenerationCacheError, ProviderError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    finally:
+        close = getattr(client, "close", None)
+        if callable(close):
+            close()
+    click.echo(json.dumps(report, ensure_ascii=False, sort_keys=True))
+
+
+def _run_ie3_arm(
+    *,
+    arm: str,
+    cases_path: Path,
+    taxonomy_path: Path,
+    dataset_manifest_path: Path,
+    repository_root: Path,
+    experiment_path: Path,
+    role: str,
+    cache_dir: Path,
+    output_dir: Path,
+) -> None:
+    client, _model = _ie3_client(experiment_path, role)
+    runner = run_b2b_dev if arm == "B2b" else run_b3_dev
+    try:
+        report = runner(
+            client=client,
+            role=role,  # type: ignore[arg-type]
+            cache_dir=cache_dir,
+            cases_path=cases_path,
+            taxonomy_path=taxonomy_path,
+            dataset_manifest_path=dataset_manifest_path,
+            experiment_path=experiment_path,
+            output_dir=output_dir,
+            repository_root=repository_root,
+        )
+    except (OSError, BaselineRunError, GenerationCacheError, ProviderError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    finally:
+        close = getattr(client, "close", None)
+        if callable(close):
+            close()
+    click.echo(json.dumps(report, ensure_ascii=False, sort_keys=True))
+
+
+def _ie3_run_options(function: Callable[P, R]) -> Callable[P, R]:
+    function = click.option(
+        "--output-dir",
+        type=click.Path(path_type=Path, file_okay=False),
+        required=True,
+    )(function)
+    function = click.option(
+        "--cache-dir",
+        type=click.Path(path_type=Path, file_okay=False),
+        required=True,
+    )(function)
+    function = _ie3_role_option(function)
+    return _ie3_dev_options(function)
+
+
+@ie3_group.command("b2b-dev")
+@_ie3_run_options
+def ie3_b2b_dev(
+    cases_path: Path,
+    taxonomy_path: Path,
+    dataset_manifest_path: Path,
+    repository_root: Path,
+    experiment_path: Path,
+    role: str,
+    cache_dir: Path,
+    output_dir: Path,
+) -> None:
+    """Run the registered same-channel verifier over frozen dev."""
+
+    _run_ie3_arm(
+        arm="B2b",
+        cases_path=cases_path,
+        taxonomy_path=taxonomy_path,
+        dataset_manifest_path=dataset_manifest_path,
+        repository_root=repository_root,
+        experiment_path=experiment_path,
+        role=role,
+        cache_dir=cache_dir,
+        output_dir=output_dir,
+    )
+
+
+@ie3_group.command("b3-dev")
+@_ie3_run_options
+def ie3_b3_dev(
+    cases_path: Path,
+    taxonomy_path: Path,
+    dataset_manifest_path: Path,
+    repository_root: Path,
+    experiment_path: Path,
+    role: str,
+    cache_dir: Path,
+    output_dir: Path,
+) -> None:
+    """Run taxonomy-free evidence recovery followed by Activity grounding over dev."""
+
+    _run_ie3_arm(
+        arm="B3",
+        cases_path=cases_path,
+        taxonomy_path=taxonomy_path,
+        dataset_manifest_path=dataset_manifest_path,
+        repository_root=repository_root,
+        experiment_path=experiment_path,
+        role=role,
+        cache_dir=cache_dir,
+        output_dir=output_dir,
+    )
+
+
+def _ie3_test_options(function: Callable[P, R]) -> Callable[P, R]:
+    function = click.option(
+        "--experiment",
+        "experiment_path",
+        type=click.Path(path_type=Path, exists=True, dir_okay=False),
+        default=Path("configs/kir-pilot-v2-ie3-experiment.yaml"),
+        show_default=True,
+    )(function)
+    function = click.option(
+        "--dev-cases",
+        "dev_cases_path",
+        type=click.Path(path_type=Path, exists=True, dir_okay=False),
+        default=Path("data/kir-pilot-v2/dev.jsonl"),
+        show_default=True,
+    )(function)
+    function = click.option(
+        "--cases",
+        "cases_path",
+        type=click.Path(path_type=Path, exists=True, dir_okay=False),
+        default=Path("data/kir-pilot-v2/test.jsonl"),
+        show_default=True,
+    )(function)
+    function = click.option(
+        "--taxonomy",
+        "taxonomy_path",
+        type=click.Path(path_type=Path, exists=True, dir_okay=False),
+        default=Path("configs/kindred-activity-intents-v2.yaml"),
+        show_default=True,
+    )(function)
+    function = click.option(
+        "--dataset-manifest",
+        "dataset_manifest_path",
+        type=click.Path(path_type=Path, exists=True, dir_okay=False),
+        default=Path("data/kir-pilot-v2/freeze-manifest.json"),
+        show_default=True,
+    )(function)
+    return click.option(
+        "--repository-root",
+        type=click.Path(path_type=Path, exists=True, file_okay=False),
+        default=Path("."),
+        show_default=True,
+    )(function)
+
+
+def _ie3_test_run_options(function: Callable[P, R]) -> Callable[P, R]:
+    function = click.option(
+        "--output-dir",
+        type=click.Path(path_type=Path, file_okay=False),
+        required=True,
+    )(function)
+    function = click.option(
+        "--cache-dir",
+        type=click.Path(path_type=Path, file_okay=False),
+        required=True,
+    )(function)
+    function = _ie3_role_option(function)
+    return _ie3_test_options(function)
+
+
+@ie3_group.command("one-stage-cache-test")
+@_ie3_test_options
+@_ie3_role_option
+@click.option(
+    "--cache-dir",
+    type=click.Path(path_type=Path, file_okay=False),
+    required=True,
+)
+def ie3_one_stage_cache_test(
+    cases_path: Path,
+    dev_cases_path: Path,
+    taxonomy_path: Path,
+    dataset_manifest_path: Path,
+    repository_root: Path,
+    experiment_path: Path,
+    role: str,
+    cache_dir: Path,
+) -> None:
+    """Populate frozen-test B2b call-1 cache without a secondary scoring arm."""
+
+    client: StructuredGenerationClient | None = None
+    try:
+        verify_test_guard(dataset_manifest_path, experiment_path, repository_root)
+        client, _model = _ie3_client(experiment_path, role)
+        report = prepare_one_stage_test_cache(
+            client=client,
+            role=role,  # type: ignore[arg-type]
+            cache_dir=cache_dir,
+            cases_path=cases_path,
+            dev_cases_path=dev_cases_path,
+            taxonomy_path=taxonomy_path,
+            dataset_manifest_path=dataset_manifest_path,
+            experiment_path=experiment_path,
+            repository_root=repository_root,
+        )
+    except (
+        OSError,
+        BaselineRunError,
+        FreezeGuardError,
+        GenerationCacheError,
+        ProviderError,
+        ValueError,
+    ) as exc:
+        raise click.ClickException(str(exc)) from exc
+    finally:
+        close = getattr(client, "close", None)
+        if callable(close):
+            close()
+    click.echo(json.dumps(report, ensure_ascii=False, sort_keys=True))
+
+
+def _run_ie3_test_arm(
+    *,
+    arm: str,
+    cases_path: Path,
+    dev_cases_path: Path,
+    taxonomy_path: Path,
+    dataset_manifest_path: Path,
+    repository_root: Path,
+    experiment_path: Path,
+    role: str,
+    cache_dir: Path,
+    output_dir: Path,
+) -> None:
+    client: StructuredGenerationClient | None = None
+    runner = run_b2b_test if arm == "B2b" else run_b3_test
+    try:
+        verify_test_guard(dataset_manifest_path, experiment_path, repository_root)
+        client, _model = _ie3_client(experiment_path, role)
+        report = runner(
+            client=client,
+            role=role,  # type: ignore[arg-type]
+            cache_dir=cache_dir,
+            cases_path=cases_path,
+            dev_cases_path=dev_cases_path,
+            taxonomy_path=taxonomy_path,
+            dataset_manifest_path=dataset_manifest_path,
+            experiment_path=experiment_path,
+            output_dir=output_dir,
+            repository_root=repository_root,
+        )
+    except (
+        OSError,
+        BaselineRunError,
+        FreezeGuardError,
+        GenerationCacheError,
+        ProviderError,
+        ValueError,
+    ) as exc:
+        raise click.ClickException(str(exc)) from exc
+    finally:
+        close = getattr(client, "close", None)
+        if callable(close):
+            close()
+    click.echo(json.dumps(report, ensure_ascii=False, sort_keys=True))
+
+
+@ie3_group.command("b2b-test")
+@_ie3_test_run_options
+def ie3_b2b_test(
+    cases_path: Path,
+    dev_cases_path: Path,
+    taxonomy_path: Path,
+    dataset_manifest_path: Path,
+    repository_root: Path,
+    experiment_path: Path,
+    role: str,
+    cache_dir: Path,
+    output_dir: Path,
+) -> None:
+    """Run the frozen-test same-channel verifier after both freeze guards pass."""
+
+    _run_ie3_test_arm(
+        arm="B2b",
+        cases_path=cases_path,
+        dev_cases_path=dev_cases_path,
+        taxonomy_path=taxonomy_path,
+        dataset_manifest_path=dataset_manifest_path,
+        repository_root=repository_root,
+        experiment_path=experiment_path,
+        role=role,
+        cache_dir=cache_dir,
+        output_dir=output_dir,
+    )
+
+
+@ie3_group.command("b3-test")
+@_ie3_test_run_options
+def ie3_b3_test(
+    cases_path: Path,
+    dev_cases_path: Path,
+    taxonomy_path: Path,
+    dataset_manifest_path: Path,
+    repository_root: Path,
+    experiment_path: Path,
+    role: str,
+    cache_dir: Path,
+    output_dir: Path,
+) -> None:
+    """Run frozen-test taxonomy-free evidence recovery and grounding."""
+
+    _run_ie3_test_arm(
+        arm="B3",
+        cases_path=cases_path,
+        dev_cases_path=dev_cases_path,
+        taxonomy_path=taxonomy_path,
+        dataset_manifest_path=dataset_manifest_path,
+        repository_root=repository_root,
+        experiment_path=experiment_path,
+        role=role,
+        cache_dir=cache_dir,
+        output_dir=output_dir,
+    )
+
+
+@ie3_group.command("b0-test")
+@_ie3_test_options
+@click.option("--output-dir", type=click.Path(path_type=Path, file_okay=False), required=True)
+def ie3_b0_test(
+    cases_path: Path,
+    dev_cases_path: Path,
+    taxonomy_path: Path,
+    dataset_manifest_path: Path,
+    repository_root: Path,
+    experiment_path: Path,
+    output_dir: Path,
+) -> None:
+    """Run frozen lexical rules without reopening dev selection."""
+
+    del dev_cases_path
+    try:
+        report = run_b0_test(
+            cases_path=cases_path,
+            taxonomy_path=taxonomy_path,
+            dataset_manifest_path=dataset_manifest_path,
+            experiment_path=experiment_path,
+            output_dir=output_dir,
+            repository_root=repository_root,
+        )
+    except (OSError, FormalRunError, FreezeGuardError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(json.dumps(report, ensure_ascii=False, sort_keys=True))
+
+
+@ie3_group.command("b1-test")
+@_ie3_test_options
+@click.option("--cache-dir", type=click.Path(path_type=Path, file_okay=False), required=True)
+@click.option("--output-dir", type=click.Path(path_type=Path, file_okay=False), required=True)
+def ie3_b1_test(
+    cases_path: Path,
+    dev_cases_path: Path,
+    taxonomy_path: Path,
+    dataset_manifest_path: Path,
+    repository_root: Path,
+    experiment_path: Path,
+    cache_dir: Path,
+    output_dir: Path,
+) -> None:
+    """Run frozen B1 prototypes and thresholds without test-time calibration."""
+
+    try:
+        verify_test_guard(dataset_manifest_path, experiment_path, repository_root)
+        models, _fixture = load_readiness_inputs(
+            experiment_path, Path("tests/fixtures/provider-smoke.json")
+        )
+        spec = models.embedding
+        api_key = os.environ.get(spec.api_key_env)
+        if not api_key:
+            raise FormalRunError(f"missing embedding credential: {spec.api_key_env}")
+        with GoogleGenerativeLanguageClient(
+            api_key=api_key,
+            base_url=spec.base_url,
+            timeout_seconds=spec.timeout_seconds,
+        ) as client:
+            report = run_b1_test(
+                client=client,
+                cache_dir=cache_dir,
+                cases_path=cases_path,
+                dev_cases_path=dev_cases_path,
+                taxonomy_path=taxonomy_path,
+                dataset_manifest_path=dataset_manifest_path,
+                experiment_path=experiment_path,
+                output_dir=output_dir,
+                repository_root=repository_root,
+            )
+    except (
+        OSError,
+        EmbeddingCacheError,
+        FormalRunError,
+        FreezeGuardError,
+        ProviderError,
+        ValueError,
+    ) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(json.dumps(report, ensure_ascii=False, sort_keys=True))
+
+
+@ie3_group.command("b2a-test")
+@_ie3_test_options
+@click.option("--cache-dir", type=click.Path(path_type=Path, file_okay=False), required=True)
+@click.option("--output-dir", type=click.Path(path_type=Path, file_okay=False), required=True)
+def ie3_b2a_test(
+    cases_path: Path,
+    dev_cases_path: Path,
+    taxonomy_path: Path,
+    dataset_manifest_path: Path,
+    repository_root: Path,
+    experiment_path: Path,
+    cache_dir: Path,
+    output_dir: Path,
+) -> None:
+    """Run the primary one-stage scoring arm and seed B2b call-1 cache."""
+
+    client: StructuredGenerationClient | None = None
+    try:
+        verify_test_guard(dataset_manifest_path, experiment_path, repository_root)
+        client, _model = _ie3_client(experiment_path, "primary_decision")
+        report = run_b2a_test(
+            client=client,
+            cache_dir=cache_dir,
+            cases_path=cases_path,
+            dev_cases_path=dev_cases_path,
+            taxonomy_path=taxonomy_path,
+            dataset_manifest_path=dataset_manifest_path,
+            experiment_path=experiment_path,
+            output_dir=output_dir,
+            repository_root=repository_root,
+        )
+    except (
+        OSError,
+        FormalRunError,
+        FreezeGuardError,
+        GenerationCacheError,
+        ProviderError,
+        ValueError,
+    ) as exc:
+        raise click.ClickException(str(exc)) from exc
+    finally:
+        close = getattr(client, "close", None)
+        if callable(close):
+            close()
+    click.echo(json.dumps(report, ensure_ascii=False, sort_keys=True))
+
+
+@ie3_group.command("matrix-check")
+@_ie3_test_options
+@click.option(
+    "--runs-root", type=click.Path(path_type=Path, exists=True, file_okay=False), required=True
+)
+@click.option("--output", "output_path", type=click.Path(path_type=Path), required=True)
+def ie3_matrix_check(
+    cases_path: Path,
+    dev_cases_path: Path,
+    taxonomy_path: Path,
+    dataset_manifest_path: Path,
+    repository_root: Path,
+    experiment_path: Path,
+    runs_root: Path,
+    output_path: Path,
+) -> None:
+    """Validate all seven formal LLM cells and per-model token budgets."""
+
+    del dev_cases_path
+    try:
+        report = build_seven_run_matrix(
+            runs_root=runs_root,
+            cases_path=cases_path,
+            taxonomy_path=taxonomy_path,
+            dataset_manifest_path=dataset_manifest_path,
+            experiment_path=experiment_path,
+            output_path=output_path,
+            repository_root=repository_root,
+        )
+    except (OSError, FreezeGuardError, MatrixValidationError, ValueError) as exc:
         raise click.ClickException(str(exc)) from exc
     click.echo(json.dumps(report, ensure_ascii=False, sort_keys=True))
 

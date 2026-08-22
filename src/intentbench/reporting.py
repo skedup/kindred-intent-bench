@@ -1,4 +1,4 @@
-"""Hash-bound, deterministic IE2.1 evaluation artifacts over frozen dev Gold."""
+"""Hash-bound deterministic evaluation artifacts over frozen dev or test Gold."""
 
 from __future__ import annotations
 
@@ -84,7 +84,7 @@ class EvaluationMetricsArtifact(StrictModel):
     evaluator_version: Literal["intentbench-ie2.1-v1"] = EVALUATOR_VERSION
     dataset_version: str = Field(min_length=1)
     taxonomy_version: str = Field(min_length=1)
-    split: Literal["dev"] = "dev"
+    split: Split
     dataset_freeze_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     source_artifacts: dict[str, ArtifactDigest]
     metrics: dict[str, Any]
@@ -93,7 +93,7 @@ class EvaluationMetricsArtifact(StrictModel):
 class BadcaseRecord(StrictModel):
     schema_version: Literal[1] = 1
     case_id: str
-    split: Literal["dev"] = "dev"
+    split: Split
     bootstrap_cluster_id: str
     error_types: list[str] = Field(min_length=1)
     gold_decision: Decision
@@ -151,7 +151,7 @@ class BootstrapComparisonArtifact(StrictModel):
     evaluator_version: Literal["intentbench-ie2.1-v1"] = EVALUATOR_VERSION
     dataset_version: str = Field(min_length=1)
     taxonomy_version: str = Field(min_length=1)
-    split: Literal["dev"] = "dev"
+    split: Split
     difference: Literal["right_minus_left"] = "right_minus_left"
     left_id: str = Field(min_length=1)
     right_id: str = Field(min_length=1)
@@ -244,15 +244,16 @@ def _load_dataset_freeze(path: Path) -> DatasetFreezeManifest:
     return manifest
 
 
-def bind_frozen_dev(
+def bind_frozen_split(
     *,
+    split: Split,
     cases_path: Path,
     taxonomy_path: Path,
     dataset_manifest_path: Path,
     repository_root: Path,
 ) -> tuple[list[Case], DatasetFreezeManifest]:
     manifest = _load_dataset_freeze(dataset_manifest_path)
-    for name, supplied_path in (("dev", cases_path), ("taxonomy", taxonomy_path)):
+    for name, supplied_path in ((split.value, cases_path), ("taxonomy", taxonomy_path)):
         digest = manifest.artifacts.get(name)
         if digest is None:
             raise EvaluationArtifactError(f"dataset freeze lacks {name} artifact")
@@ -265,11 +266,29 @@ def bind_frozen_dev(
     if taxonomy.taxonomy_version != manifest.taxonomy_version:
         raise EvaluationArtifactError("taxonomy version differs from dataset freeze")
     cases = load_formal_cases(cases_path)
-    if any(case.split is not Split.DEV for case in cases):
-        raise EvaluationArtifactError("IE2.1 evaluator accepts frozen dev Case records only")
+    if any(case.split is not split for case in cases):
+        if split is Split.DEV:
+            raise EvaluationArtifactError("IE2.1 evaluator accepts frozen dev Case records only")
+        raise EvaluationArtifactError(f"Case records do not belong to frozen {split.value}")
     validate_split_integrity(cases)
     validate_cases(cases, taxonomy)
     return cases, manifest
+
+
+def bind_frozen_dev(
+    *,
+    cases_path: Path,
+    taxonomy_path: Path,
+    dataset_manifest_path: Path,
+    repository_root: Path,
+) -> tuple[list[Case], DatasetFreezeManifest]:
+    return bind_frozen_split(
+        split=Split.DEV,
+        cases_path=cases_path,
+        taxonomy_path=taxonomy_path,
+        dataset_manifest_path=dataset_manifest_path,
+        repository_root=repository_root,
+    )
 
 
 def _source_digest(path: Path, repository_root: Path) -> ArtifactDigest:
@@ -373,6 +392,7 @@ def _badcases(cases: Sequence[Case], predictions: Sequence[Prediction]) -> list[
         records.append(
             BadcaseRecord(
                 case_id=case.id,
+                split=case.split,
                 bootstrap_cluster_id=case.bootstrap_cluster_id,
                 error_types=ordered_errors,
                 gold_decision=case.gold.decision,
@@ -428,8 +448,9 @@ def _write_bundle(output_dir: Path, payloads: dict[str, bytes]) -> Literal["crea
     return "created"
 
 
-def evaluate_frozen_dev(
+def evaluate_frozen_split(
     *,
+    split: Split,
     cases_path: Path,
     predictions_path: Path,
     taxonomy_path: Path,
@@ -437,9 +458,10 @@ def evaluate_frozen_dev(
     output_dir: Path,
     repository_root: Path,
 ) -> dict[str, object]:
-    """Evaluate one cached prediction artifact and atomically write IE2.1 files."""
+    """Evaluate one cached prediction artifact and atomically write versioned files."""
 
-    cases, dataset = bind_frozen_dev(
+    cases, dataset = bind_frozen_split(
+        split=split,
         cases_path=cases_path,
         taxonomy_path=taxonomy_path,
         dataset_manifest_path=dataset_manifest_path,
@@ -452,9 +474,10 @@ def evaluate_frozen_dev(
     artifact = EvaluationMetricsArtifact(
         dataset_version=dataset.dataset_version,
         taxonomy_version=dataset.taxonomy_version,
+        split=split,
         dataset_freeze_sha256=sha256_file(dataset_manifest_path),
         source_artifacts={
-            "dev": _source_digest(cases_path, repository_root),
+            split.value: _source_digest(cases_path, repository_root),
             "predictions": _source_digest(predictions_path, repository_root),
             "taxonomy": _source_digest(taxonomy_path, repository_root),
         },
@@ -468,7 +491,7 @@ def evaluate_frozen_dev(
     status = _write_bundle(output_dir, payloads)
     return {
         "status": status,
-        "split": "dev",
+        "split": split.value,
         "gold_case_count": len(cases),
         "prediction_count": len(predictions),
         "badcase_count": len(badcases),
@@ -478,6 +501,26 @@ def evaluate_frozen_dev(
         "badcases_sha256": _sha256_bytes(payloads["badcases"]),
         "provider_calls": 0,
     }
+
+
+def evaluate_frozen_dev(
+    *,
+    cases_path: Path,
+    predictions_path: Path,
+    taxonomy_path: Path,
+    dataset_manifest_path: Path,
+    output_dir: Path,
+    repository_root: Path,
+) -> dict[str, object]:
+    return evaluate_frozen_split(
+        split=Split.DEV,
+        cases_path=cases_path,
+        predictions_path=predictions_path,
+        taxonomy_path=taxonomy_path,
+        dataset_manifest_path=dataset_manifest_path,
+        output_dir=output_dir,
+        repository_root=repository_root,
+    )
 
 
 ComparisonMetric = Callable[[Sequence[Case], Mapping[str, Prediction]], float]
@@ -576,8 +619,9 @@ def _compare_domain(
     )
 
 
-def compare_frozen_dev(
+def compare_frozen_split(
     *,
+    split: Split,
     cases_path: Path,
     left_predictions_path: Path,
     right_predictions_path: Path,
@@ -590,11 +634,12 @@ def compare_frozen_dev(
     iterations: int = BOOTSTRAP_ITERATIONS,
     seed: int = BOOTSTRAP_SEED,
 ) -> dict[str, object]:
-    """Create the registered right-minus-left paired dev comparison artifact."""
+    """Create the registered right-minus-left paired split comparison artifact."""
 
     if iterations < 1:
         raise EvaluationArtifactError("bootstrap iterations must be positive")
-    cases, dataset = bind_frozen_dev(
+    cases, dataset = bind_frozen_split(
+        split=split,
         cases_path=cases_path,
         taxonomy_path=taxonomy_path,
         dataset_manifest_path=dataset_manifest_path,
@@ -623,11 +668,12 @@ def compare_frozen_dev(
     artifact = BootstrapComparisonArtifact(
         dataset_version=dataset.dataset_version,
         taxonomy_version=dataset.taxonomy_version,
+        split=split,
         left_id=left_id,
         right_id=right_id,
         dataset_freeze_sha256=sha256_file(dataset_manifest_path),
         source_artifacts={
-            "dev": _source_digest(cases_path, repository_root),
+            split.value: _source_digest(cases_path, repository_root),
             "left_predictions": _source_digest(left_predictions_path, repository_root),
             "right_predictions": _source_digest(right_predictions_path, repository_root),
             "taxonomy": _source_digest(taxonomy_path, repository_root),
@@ -660,7 +706,7 @@ def compare_frozen_dev(
         status = "created"
     return {
         "status": status,
-        "split": "dev",
+        "split": split.value,
         "difference": "right_minus_left",
         "left_id": left_id,
         "right_id": right_id,
@@ -675,3 +721,33 @@ def compare_frozen_dev(
         "bootstrap_sha256": _sha256_bytes(payload),
         "provider_calls": 0,
     }
+
+
+def compare_frozen_dev(
+    *,
+    cases_path: Path,
+    left_predictions_path: Path,
+    right_predictions_path: Path,
+    left_id: str,
+    right_id: str,
+    taxonomy_path: Path,
+    dataset_manifest_path: Path,
+    output_path: Path,
+    repository_root: Path,
+    iterations: int = BOOTSTRAP_ITERATIONS,
+    seed: int = BOOTSTRAP_SEED,
+) -> dict[str, object]:
+    return compare_frozen_split(
+        split=Split.DEV,
+        cases_path=cases_path,
+        left_predictions_path=left_predictions_path,
+        right_predictions_path=right_predictions_path,
+        left_id=left_id,
+        right_id=right_id,
+        taxonomy_path=taxonomy_path,
+        dataset_manifest_path=dataset_manifest_path,
+        output_path=output_path,
+        repository_root=repository_root,
+        iterations=iterations,
+        seed=seed,
+    )

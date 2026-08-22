@@ -1,8 +1,8 @@
 # Kindred Intent Bench 实施计划
 
-> Status: `IE0 complete / IE1 complete and dataset frozen / IE2 complete / IE3 next`
+> Status: `IE0 complete / IE1 complete and dataset frozen / IE2 complete / IE3 implementation and dev selection complete / freeze pending`
 >
-> 日期：2026-08-22
+> 日期：2026-08-23
 >
 > 权威设计：[design.md](design.md)
 
@@ -337,23 +337,28 @@ cluster 不足，只保留 point estimate。缓存重跑只证明流水线复现
 
 #### IE3.1 两个双调用实验臂
 
-- B2a/B2b/B3 使用相同 few-shot case IDs、顺序和数量；Prompt 表达可以适配各阶段，监督 case 不变；
-- B2b：call-1 必须直接复用相同 case/model/Prompt/config 的 B2a 缓存，call-2 才做同一闭集语义中的
+- [x] B2a/B2b/B3 使用相同 few-shot case IDs、顺序和数量；Prompt 表达可以适配各阶段，监督 case 不变；
+- [x] B2b：call-1 必须直接复用相同 case/model/Prompt/config 的 B2a 缓存，call-2 才做同一闭集语义中的
   审查/修正；
-- B3-A：只恢复输入中已有的自由文本 evidence representation，不看 taxonomy；
-- B3-B：读取阶段 A 与完整 taxonomy，输出四类 routing decision；
-- 对齐模型、调用次数、每次 output budget、输入事实、解码参数、候选顺序、重试和 repair policy。
+- [x] B3-A：只恢复输入中已有的自由文本 evidence representation，不看 taxonomy；
+- [x] B3-B：读取阶段 A 与完整 taxonomy，输出四类 routing decision；
+- [x] 对齐模型、调用次数、每次 output budget、输入事实、解码参数、候选顺序、重试和 repair policy。
+
+Gemini dev 已完成一次预登记结构修订并停止调 Prompt：B2b v2 为 47/48、无 schema invalid；B3 v2 为
+48/48，且 48 条阶段 A 表达全部合法。两者总 token 为 309,138 / 245,110，绝对差约 20.7%，因此冻结前已
+知严格 10% 预算门存在风险；不得用 dev 分数覆盖该有效性门。
 
 #### IE3.2 Freeze 与运行
 
-- 在 test 前冻结 B0/B1 配置、三个 LLM Prompt、Provider 配置和 dependency lock；
-- 把模型角色、Prompt/config hash、预算和三态门写入新的 `kir-pilot-v2-experiment.yaml`，并绑定已冻结的
+- [ ] 在 test 前冻结 B0/B1 配置、三个 LLM Prompt、Provider 配置和 dependency lock；
+- [x] 把模型角色、Prompt/config hash、预算和三态门写入新的 `kir-pilot-v2-ie3-experiment.yaml`，并绑定已冻结的
   v2 dataset manifest；
 - 预登记 Gemini primary、DeepSeek weak 与 OpenAI cross-provider-reference；只有 primary 有全局 verdict
   authority，后两者只做各自模型内的 `B3-B2b` 复现；
-- 先完整运行 dev sanity check，再对 frozen test 执行版本化 run；
-- `run --split test` 必须先验证 `freeze-manifest.json` 与 experiment lock 的全部 hash，任一缺失或不匹配就拒绝；
-- 报告 B2b/B3 实际总 token 差异；超过 10% 时自动标记 `budget-confounded`。
+- [x] 完整运行 Gemini dev sanity check 并按一次修订预算停止调 Prompt；
+- [ ] 在 experiment freeze 后对 frozen test 执行版本化 run；
+- [x] `run --split test` 必须先验证 `freeze-manifest.json` 与 experiment lock 的全部 hash，任一缺失或不匹配就拒绝；
+- [x] 报告 B2b/B3 实际总 token 差异；超过 10% 时自动标记 `budget-confounded`。
 
 **Exit gate IE3**
 

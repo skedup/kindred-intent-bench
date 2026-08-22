@@ -1,0 +1,120 @@
+schema_version: 1
+receipt_id: kir-pilot-v2-b3-stage-a-supervision-v1
+dataset_version: kir-pilot-v2
+split: dev
+dev_sha256: c4807ed66def5fe04402c8ee5c7d1a5460965dfc32f063a3f272b522fceb03c5
+selection_receipt_artifact: b2a_few_shot_selection
+representation_contract: formed-intention-evidence-v1
+taxonomy_visible: false
+annotation_policy: >-
+  Human-authored taxonomy-free representations of only the evidence visible in each shared
+  few-shot context; no test cases, routing target names, evidence_quote fields, or extra case IDs.
+examples:
+  - case_id: kir-pilot-v2-0035
+    output:
+      evidence_status: clear
+      action: 浏览大家公开分享的内容
+      object: 居家布置灵感
+      desired_experience: 看看居家布置灵感
+      alternative_actions: []
+      horizon: now
+      reason_short: 当前明确想浏览公开分享的居家布置内容
+  - case_id: kir-pilot-v2-0051
+    output:
+      evidence_status: clear
+      action: 安静休息一会儿
+      object: 休息时段
+      desired_experience: 暂停行动并安静休息
+      alternative_actions: []
+      horizon: now
+      reason_short: 最新表达覆盖之前候选并明确选择休息
+  - case_id: kir-pilot-v2-0071
+    output:
+      evidence_status: clear
+      action: 去美术馆现场看新展
+      object: 美术馆新展
+      desired_experience: 前往线下文化场所体验
+      alternative_actions: []
+      horizon: now
+      reason_short: 最新表达明确现在去现场看展
+  - case_id: kir-pilot-v2-0082
+    output:
+      evidence_status: clear
+      action: 修改已有海报的文字和尺寸
+      object: 已有机器人海报
+      desired_experience: 调整已有视觉作品
+      alternative_actions: []
+      horizon: now
+      reason_short: 当前行动是编辑已有海报而非创作新图
+  - case_id: kir-pilot-v2-0090
+    output:
+      evidence_status: clear
+      action: 给老同学发一句晚安
+      object: 一位老同学
+      desired_experience: 向老同学发送问候
+      alternative_actions: []
+      horizon: now
+      reason_short: 当前明确想联系第三方并发送晚安消息
+  - case_id: kir-pilot-v2-0108
+    output:
+      evidence_status: clear
+      action: 给植物浇水并修剪叶子
+      object: 阳台植物
+      desired_experience: 照料植物
+      alternative_actions: []
+      horizon: now
+      reason_short: 当前明确想完成植物养护
+  - case_id: kir-pilot-v2-0113
+    output:
+      evidence_status: none
+      action: null
+      object: null
+      desired_experience: null
+      alternative_actions: []
+      horizon: now
+      reason_short: 明确否定休息且没有其他当前安排
+  - case_id: kir-pilot-v2-0131
+    output:
+      evidence_status: deferred
+      action: 学一首吉他曲
+      object: 一首吉他曲
+      desired_experience: 学习演奏音乐
+      alternative_actions: []
+      horizon: later
+      reason_short: 有可理解的以后愿望但明确不是现在
+  - case_id: kir-pilot-v2-0134
+    output:
+      evidence_status: none
+      action: null
+      object: null
+      desired_experience: null
+      alternative_actions: []
+      horizon: now
+      reason_short: 浏览已经结束且没有下一步计划
+  - case_id: kir-pilot-v2-0143
+    output:
+      evidence_status: ambiguous
+      action: null
+      object: 图片
+      desired_experience: null
+      alternative_actions: [查看别人分享的图片, 自己画一张]
+      horizon: now
+      reason_short: 两个不同当前候选尚未选择
+  - case_id: kir-pilot-v2-0148
+    output:
+      evidence_status: ambiguous
+      action: 找有意思的内容看看
+      object: null
+      desired_experience: 浏览有趣内容
+      alternative_actions: []
+      horizon: now
+      reason_short: 有浏览倾向但内容类型尚未决定
+  - case_id: kir-pilot-v2-0158
+    output:
+      evidence_status: ambiguous
+      action: null
+      object: null
+      desired_experience: 外出活动
+      alternative_actions: [去散步, 骑车]
+      horizon: now
+      reason_short: 两个当前行动候选尚未选择

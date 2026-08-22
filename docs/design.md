@@ -1,8 +1,8 @@
 # 求职优先的意图识别 Workbench：数据、基线、OOS 与评测闭环
 
-> ✅ **Status**: `IE0 complete / IE1 complete and dataset frozen / IE2 complete / IE3 next`
+> ✅ **Status**: `IE0 complete / IE1 complete and dataset frozen / IE2 complete / IE3 implementation and dev selection complete / freeze pending`
 >
-> 日期：2026-08-22
+> 日期：2026-08-23
 >
 > 本文取代 Kindred 产品仓库中《开放意图形成与 Activity 诚实落地》的**近期实施优先级**；原文继续留在
 > Kindred，作为潜在生产架构参考，不复制到本评测仓库。
