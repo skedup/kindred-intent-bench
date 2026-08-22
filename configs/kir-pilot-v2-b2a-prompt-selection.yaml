@@ -1,0 +1,53 @@
+schema_version: 1
+receipt_id: kir-pilot-v2-b2a-prompt-selection-v1
+dataset_version: kir-pilot-v2
+split: dev
+dev_sha256: c4807ed66def5fe04402c8ee5c7d1a5460965dfc32f063a3f272b522fceb03c5
+selection_metric_order: [hierarchical_exact_match, decision_macro_f1]
+revision_budget: 1
+provider: google_generative_language
+model: gemini-3.6-flash
+fixed_call_policy:
+  calls_per_case: 1
+  max_output_tokens: 512
+  retry_policy: none
+  schema_repair_policy: reject
+  thinking_level: minimal
+candidates:
+  - prompt_version: v1
+    prompt_sha256: 4e73f187c22b626c3ef4e165956d7c3ebd6c6e9d91a4608773fb7c715db6d2a7
+    full_dev_hem: 0.9375
+    full_dev_decision_macro_f1: 0.9010577915376676
+    case_id_held_out_count: 36
+    case_id_held_out_hem: 0.9166666666666666
+    case_id_held_out_decision_macro_f1: 0.8292540792540791
+    cluster_held_out_count: 30
+    cluster_held_out_hem: 0.9
+    cluster_held_out_decision_macro_f1: 0.7638888888888888
+    diagnostic_errors: [kir-pilot-v2-0086, kir-pilot-v2-0155, kir-pilot-v2-0156]
+  - prompt_version: v2
+    prompt_sha256: 68cacf16e75605c463c414efe9985a2861709c97ef1fd5f78d9d977251a753c3
+    full_dev_hem: 1.0
+    full_dev_decision_macro_f1: 1.0
+    case_id_held_out_count: 36
+    case_id_held_out_hem: 1.0
+    case_id_held_out_decision_macro_f1: 1.0
+    cluster_held_out_count: 30
+    cluster_held_out_hem: 1.0
+    cluster_held_out_decision_macro_f1: 1.0
+    diagnostic_errors: []
+selected_prompt_version: v2
+revision_scope:
+  - Clarify that comparison, search, browsing, or planning can itself be a current OOS action.
+  - Clarify that a current desired experience or coarse direction with unresolved method is ambiguous.
+stopping_rule: >-
+  Select the better registered candidate by the metric order, then stop Prompt tuning before any
+  frozen-test prediction. No additional dev revision is permitted for this pilot.
+excluded_diagnostic_run: >-
+  Prompt v1 with the Provider default medium thinking produced 39 truncated JSON responses under
+  the 512-token budget. It diagnosed the generation contract rather than Prompt quality, so it was
+  excluded from Prompt selection. Its legacy adapter discarded failure usage; no total-cost claim is
+  made for that run.
+interpretation_limit: >-
+  These are selection-set descriptive results from a synthetic non-blind dev split. They are not a
+  generalization estimate or a formal confidence statement.

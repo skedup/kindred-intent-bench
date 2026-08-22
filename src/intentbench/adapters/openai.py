@@ -91,28 +91,6 @@ class OpenAIResponsesClient:
             data = response.json()
         except ValueError as exc:
             raise ProviderError("invalid_json_response", "provider returned non-JSON") from exc
-        if data.get("status") != "completed":
-            raise ProviderError("incomplete", "provider response status is not completed")
-        try:
-            output_texts = [
-                content["text"]
-                for item in data["output"]
-                if item.get("type") == "message"
-                for content in item.get("content", [])
-                if content.get("type") == "output_text"
-            ]
-            if len(output_texts) != 1:
-                raise ProviderError("schema_invalid", "response must contain one output_text")
-            value = json.loads(output_texts[0])
-        except ProviderError:
-            raise
-        except (KeyError, TypeError, json.JSONDecodeError) as exc:
-            raise ProviderError(
-                "schema_invalid", "structured response was absent or invalid"
-            ) from exc
-        if not isinstance(value, dict):
-            raise ProviderError("schema_invalid", "structured response must be a JSON object")
-
         usage_raw = data.get("usage")
         if not isinstance(usage_raw, dict):
             raise ProviderError("usage_missing", "generation response lacks usage")
@@ -136,15 +114,54 @@ class OpenAIResponsesClient:
             reasoning_tokens = output_details.get("reasoning_tokens")
             if isinstance(reasoning_tokens, int) and not isinstance(reasoning_tokens, bool):
                 numeric_usage["reasoning_tokens"] = reasoning_tokens
+        reported_model_raw = data.get("model")
+        reported_model = reported_model_raw if isinstance(reported_model_raw, str) else None
+        raw_response_sha256 = hashlib.sha256(response.content).hexdigest()
+
+        def response_error(error_type: str, message: str) -> ProviderError:
+            return ProviderError(
+                error_type,
+                message,
+                reported_model=reported_model,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                total_tokens=total_tokens,
+                latency_ms=latency_ms,
+                raw_response_sha256=raw_response_sha256,
+                usage_metadata=numeric_usage,
+                structured_output_mode="provider_json_schema",
+            )
+
+        if data.get("status") != "completed":
+            raise response_error("incomplete", "provider response status is not completed")
+        try:
+            output_texts = [
+                content["text"]
+                for item in data["output"]
+                if item.get("type") == "message"
+                for content in item.get("content", [])
+                if content.get("type") == "output_text"
+            ]
+            if len(output_texts) != 1:
+                raise response_error("schema_invalid", "response must contain one output_text")
+            value = json.loads(output_texts[0])
+        except ProviderError:
+            raise
+        except (KeyError, TypeError, json.JSONDecodeError) as exc:
+            raise response_error(
+                "schema_invalid", "structured response was absent or invalid"
+            ) from exc
+        if not isinstance(value, dict):
+            raise response_error("schema_invalid", "structured response must be a JSON object")
         return GenerationResult(
             value=value,
             requested_model=model,
-            reported_model=data.get("model"),
+            reported_model=reported_model,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             total_tokens=total_tokens,
             latency_ms=latency_ms,
-            raw_response_sha256=hashlib.sha256(response.content).hexdigest(),
+            raw_response_sha256=raw_response_sha256,
             usage_metadata=numeric_usage,
             structured_output_mode="provider_json_schema",
         )

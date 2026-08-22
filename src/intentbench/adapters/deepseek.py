@@ -58,6 +58,10 @@ class DeepSeekChatClient:
         conflicts = reserved & set(parameters)
         if conflicts:
             raise ValueError(f"generation_parameters override reserved fields: {sorted(conflicts)}")
+        try:
+            Draft202012Validator.check_schema(response_schema)
+        except SchemaError as exc:
+            raise ValueError("response_schema is not valid JSON Schema 2020-12") from exc
         schema_text = json.dumps(response_schema, ensure_ascii=False, separators=(",", ":"))
         payload: dict[str, Any] = {
             "model": model,
@@ -95,30 +99,6 @@ class DeepSeekChatClient:
             data = response.json()
         except ValueError as exc:
             raise ProviderError("invalid_json_response", "provider returned non-JSON") from exc
-        try:
-            choice = data["choices"][0]
-            if choice.get("finish_reason") != "stop":
-                raise ProviderError("incomplete", "provider response did not finish with stop")
-            content = choice["message"]["content"]
-            value = json.loads(content)
-        except ProviderError:
-            raise
-        except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
-            raise ProviderError(
-                "schema_invalid", "structured response was absent or invalid"
-            ) from exc
-        if not isinstance(value, dict):
-            raise ProviderError("schema_invalid", "structured response must be a JSON object")
-        try:
-            Draft202012Validator.check_schema(response_schema)
-            Draft202012Validator(response_schema).validate(value)
-        except SchemaError as exc:
-            raise ValueError("response_schema is not valid JSON Schema 2020-12") from exc
-        except ValidationError as exc:
-            raise ProviderError(
-                "schema_invalid", "structured response did not match the requested schema"
-            ) from exc
-
         usage_raw = data.get("usage")
         if not isinstance(usage_raw, dict):
             raise ProviderError("usage_missing", "generation response lacks usage")
@@ -142,15 +122,53 @@ class DeepSeekChatClient:
             reasoning_tokens = details.get("reasoning_tokens")
             if isinstance(reasoning_tokens, int) and not isinstance(reasoning_tokens, bool):
                 numeric_usage["reasoning_tokens"] = reasoning_tokens
+        reported_model_raw = data.get("model")
+        reported_model = reported_model_raw if isinstance(reported_model_raw, str) else None
+        raw_response_sha256 = hashlib.sha256(response.content).hexdigest()
+
+        def response_error(error_type: str, message: str) -> ProviderError:
+            return ProviderError(
+                error_type,
+                message,
+                reported_model=reported_model,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                total_tokens=total_tokens,
+                latency_ms=latency_ms,
+                raw_response_sha256=raw_response_sha256,
+                usage_metadata=numeric_usage,
+                structured_output_mode="json_object_plus_local_schema_validation",
+            )
+
+        try:
+            choice = data["choices"][0]
+            if choice.get("finish_reason") != "stop":
+                raise response_error("incomplete", "provider response did not finish with stop")
+            content = choice["message"]["content"]
+            value = json.loads(content)
+        except ProviderError:
+            raise
+        except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
+            raise response_error(
+                "schema_invalid", "structured response was absent or invalid"
+            ) from exc
+        if not isinstance(value, dict):
+            raise response_error("schema_invalid", "structured response must be a JSON object")
+        try:
+            Draft202012Validator(response_schema).validate(value)
+        except ValidationError as exc:
+            raise response_error(
+                "schema_invalid", "structured response did not match the requested schema"
+            ) from exc
         return GenerationResult(
             value=value,
             requested_model=model,
-            reported_model=data.get("model"),
+            reported_model=reported_model,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             total_tokens=total_tokens,
             latency_ms=latency_ms,
-            raw_response_sha256=hashlib.sha256(response.content).hexdigest(),
+            raw_response_sha256=raw_response_sha256,
             usage_metadata=numeric_usage,
             structured_output_mode="json_object_plus_local_schema_validation",
         )

@@ -1,6 +1,6 @@
 # 求职优先的意图识别 Workbench：数据、基线、OOS 与评测闭环
 
-> ✅ **Status**: `IE0 complete / IE1 complete and dataset frozen / IE2 pending`
+> ✅ **Status**: `IE0 complete / IE1 complete and dataset frozen / IE2 complete / IE3 next`
 >
 > 日期：2026-08-22
 >
@@ -455,7 +455,9 @@ B0/B1 不能故意做成只会输出 Activity/OOS 的陪跑基线。B0 也必须
 不能在看到 test 后追加关键词。B1 的监督合同固定为：
 
 - Activity prototypes 只来自 taxonomy 的 canonical examples；
-- OOS 与 no-intent prototypes 只来自带 Gold 的 dev，各最多 8 条，按预先登记的 tag 分层和 case id 选择；
+- OOS 与 no-intent prototypes 只来自带 Gold 的 dev，各最多 8 条；先按预登记 tag 分层，每个
+  `bootstrap_cluster_id` 只保留最小 case id，再以分层 round-robin 选择，避免 control/distractor 或释义对
+  重复加权同一场景；
 - 不单独建立 ambiguous prototype，ambiguous 只由 top-1/top-2 margin 触发；
 - B1 不得使用 test、额外手写伪样本或根据 test badcase 替换 prototype；
 - 报告各类 prototype 的 case id 和数量。B2a/B2b/B3 的 few-shot 也只能来自同一 dev pool，并分别报告
@@ -481,7 +483,9 @@ actionability、similarity 和 margin 阈值只在 dev 调整；prototype、阈�
 B1 默认把每类 canonical-example embedding 做 L2 normalize 后取 centroid，并使用 cosine similarity；所有可选
 聚合方式、阈值网格和 tie-break 写入 experiment config。阈值组合按 dev HEM、decision Macro-F1 依次降序
 选择，仍相同时取按参数名排序后的数值 tuple 字典序最小项，确保相同 dev 得到唯一配置；用 golden fixture
-固定该行为。
+固定该行为。Pilot 的 Google adapter 还固定 `taskType=SEMANTIC_SIMILARITY` 与 3072 维输出；embedding cache
+key 绑定规范化文本、model、task type、维度与 adapter-config hash，不使用 case ID，因此相同内容可复用、
+配置漂移不会误命中旧向量。
 
 B2a、B2b、B3 必须使用完全相同的 few-shot case IDs、顺序和数量；否则 run 标记
 `supervision-confounded`，不能进入严格结构消融。B2b 第一次调用必须与 B2a 的调用合同完全相同，并直接
@@ -677,7 +681,7 @@ inconclusive，而不是调 test 或选择另一个更漂亮指标。
 
 ```mermaid
 flowchart LR
-    T["taxonomy v1"] --> R["case runner"]
+    T["taxonomy v2"] --> R["case runner"]
     D["dev / frozen test JSONL"] --> R
     R --> B0["rule adapter"]
     R --> B1["embedding adapter"]

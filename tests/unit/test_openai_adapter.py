@@ -93,3 +93,39 @@ def test_provider_error_does_not_persist_response_body() -> None:
             max_output_tokens=512,
         )
     assert "sensitive body" not in str(caught.value)
+
+
+def test_incomplete_response_preserves_billable_usage() -> None:
+    transport = httpx.MockTransport(
+        lambda _request: httpx.Response(
+            200,
+            json={
+                "status": "incomplete",
+                "model": "gpt-5.6-luna",
+                "output": [],
+                "usage": {
+                    "input_tokens": 15,
+                    "output_tokens": 512,
+                    "total_tokens": 527,
+                },
+            },
+        )
+    )
+    with (
+        OpenAIResponsesClient(api_key="test-key", transport=transport) as client,
+        pytest.raises(ProviderError) as caught,
+    ):
+        client.generate_json(
+            model="gpt-5.6-luna",
+            prompt="synthetic",
+            response_schema={"type": "object"},
+            max_output_tokens=512,
+        )
+    assert caught.value.error_type == "incomplete"
+    assert (
+        caught.value.input_tokens,
+        caught.value.output_tokens,
+        caught.value.total_tokens,
+    ) == (15, 512, 527)
+    assert caught.value.raw_response_sha256 is not None
+    assert caught.value.reported_model == "gpt-5.6-luna"

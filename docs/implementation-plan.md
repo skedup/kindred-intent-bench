@@ -1,6 +1,6 @@
 # Kindred Intent Bench 实施计划
 
-> Status: `IE0 complete / IE1 complete and dataset frozen / IE2 pending`
+> Status: `IE0 complete / IE1 complete and dataset frozen / IE2 complete / IE3 next`
 >
 > 日期：2026-08-22
 >
@@ -261,37 +261,77 @@ IE1.1 的 guideline fixtures 使用 `guide-*` ID 且没有 case/split 身份，�
 
 #### IE2.1 确定性 evaluator
 
-- 实现 HEM、decision Macro-F1、ID intent Macro-F1、OOS/no-intent/ambiguous 指标和 per-intent recall；
-- 实现 near-OOS、sibling false reject、成对 context distractor、统一 slice metrics、schema invalid 等切片；
-- 所有诊断 tag 使用同一注册表输出 case/cluster/HEM/decision 指标，并补充 slot completeness、horizon accuracy
+- [x] 实现 HEM、decision Macro-F1、ID intent Macro-F1、OOS/no-intent/ambiguous 指标和 per-intent recall；
+- [x] 实现 near-OOS、sibling false reject、成对 context distractor、统一 slice metrics、schema invalid 等切片；
+- [x] 所有诊断 tag 使用同一注册表输出 case/cluster/HEM/decision 指标，并补充 slot completeness、horizon accuracy
   与 quiet-control no-intent recall；
-- 实现按固定 label set、`zero_division=0` 和完整 Gold 全集计算的指标；
-- 实现按 `bootstrap_cluster_id` 的 paired draws、normalized confusion matrix 和确定性 badcase 选择；
-- evaluator 只消费缓存 prediction，重复计算不得调用 Provider。
+- [x] 实现按固定 label set、`zero_division=0` 和完整 Gold 全集计算的指标；
+- [x] 实现按 `bootstrap_cluster_id` 的 paired draws、normalized confusion matrix 和确定性 badcase 选择；
+- [x] evaluator 只消费缓存 prediction，重复计算不得调用 Provider；
+- [x] 绑定 frozen dev/taxonomy 的 path 与 SHA-256，拒绝 test Case、漂移输入、partial overwrite 和非确定性重算；
+- [x] 为四个 required domain 输出 `right-left` comparison；dev cluster 不足的 domain 保留 point estimate 并
+  标记 `insufficient_clusters`，不违规退化为 case bootstrap。
+
+IE2.1 实测 frozen dev cluster 数为：full 35、Gold-in-scope 21、near-OOS 5、no-intent 5。因此前两项可在
+dev 生成诊断 CI，后两项的正式 CI 必须等待双冻结后的 test；该限制不影响 dev Prompt/threshold 比较的
+point estimate，但不得包装成显著性结论。
 
 #### IE2.2 B0 与 B1
 
-- B0 按冻结的 actionability → OOS → ambiguity → in-scope 顺序输出四类；
-- B1 使用 frozen embedding、taxonomy examples、受限 dev prototypes 和固定 gate 顺序；
-- Activity prototype 使用 normalize 后的 canonical-example centroid 与 cosine similarity；
-- 阈值在冻结网格上按 dev HEM、decision Macro-F1 依次最大化，仍相同时用参数 tuple 字典序打破平局；
-- 记录 prototype case id、阈值、embedding identity/version 和 adapter config hash；
-- 所有选择只在 dev 完成，禁止根据 test 补规则或替换 prototype。
+- [x] B0 按冻结的 actionability → OOS → ambiguity → in-scope 顺序输出四类；
+- [x] B1 使用 frozen embedding、taxonomy examples、受限 dev prototypes 和固定 gate 顺序；拒识 prototype
+  先按 tag 分层、再按 bootstrap cluster 去重并取最小 case id，防止同簇样本重复加权；
+- [x] Activity prototype 使用 normalize 后的 canonical-example centroid 与 cosine similarity；
+- [x] 阈值在冻结网格上按 dev HEM、decision Macro-F1 依次最大化，仍相同时用参数 tuple 字典序打破平局；
+- [x] 记录 prototype case id、阈值、embedding identity/version 和 adapter config hash；
+- [x] 所有选择只在 dev 完成，禁止根据 test 补规则或替换 prototype；
+- [x] 内容寻址 embedding cache 完成首次 81 个唯一文本填充，整套 B1 重跑已验证 0 Provider 调用且产物不变。
+
+IE2.2 dev 结果：B0 HEM/Macro-F1=`1.0000/1.0000`；B1=`0.7708/0.6039`，选中
+`tau_actionability=0.00, tau_oos_margin=0.00, tau_activity_min=0.30, tau_ambiguity=0.02`。B0 是在 dev
+收窄后的 lexical 上界，不能解释为 test 泛化；B1-B0 full HEM paired-cluster dev CI 为
+`[-0.3636,-0.1111]`，主要错误集中在 ambiguous/rejection gate。experiment v2 已回写 8 个 OOS 与 5 个
+no-intent prototype IDs，但仍保持 draft，test 未运行。
 
 #### IE2.3 B2a 与通用 runner
 
-- 定义窄 Provider Protocol、超时、重试、schema repair 与错误分类；
-- runner 统一记录 latency、input/output token、费用快照和 raw-response hash；
-- B2a 实现 one-stage/one-call，并只用 dev 选择 few-shot 和 Prompt；
-- 缓存 key 使用规范化 case 内容、taxonomy、model、Prompt、adapter config 和参数 hash，不能只依赖 case ID；
-- B2a 缓存保留为 B2b call-1 的唯一输入来源。
+- [x] 定义窄 Provider Protocol、超时、重试、schema repair 与错误分类；schema 截断归入
+  `schema_invalid`，且失败调用若已返回 usage，仍计入 token 和费用；
+- [x] runner 统一记录 latency、input/output token、费用快照和 raw-response hash；
+- [x] B2a 实现 one-stage/one-call，并只用 dev 选择 12 条类别平衡、bootstrap-cluster 去重的 few-shot 和
+  Prompt；分别报告完整 dev、排除示例 ID 的 36-case 与排除全部示例 cluster 的 30-case 指标；
+- [x] 不可变调用合同从真实 context、rendered Prompt、taxonomy、Prompt template、few-shot payload、response
+  schema、model、adapter revision、structured-output mode、max output 和 generation parameters 自动算 hash，
+  不依赖 case ID，也不信任调用者提交的独立 hash；
+- [x] Provider success 与失败都可内容寻址缓存；整批重跑验证为 48 hits / 0 Provider calls / 输出
+  `unchanged`；
+- [x] B2a 缓存保留为 B2b call-1 的唯一输入来源；`require_existing` 在任一内容身份不一致或缓存缺失时
+  硬失败，不允许悄悄回退到网络调用；脱敏 portable cache bundle 与 provenance 已进入 reference artifacts；
+- [x] B2a/B2b call-1 共用结果规范化函数；Google、DeepSeek、OpenAI 对已返回响应的失败均先保存 billable
+  usage，再映射 incomplete/schema/provider 状态。
+
+IE2.3 先发现 `gemini-3.6-flash` 默认 medium thinking 会占满 512-token 单调用预算：首轮 48 条中 39 条
+没有形成完整 JSON。单样本诊断后按 Provider 官方能力把分类任务固定为 `thinkingLevel=minimal`，仍保持
+one call、512 max output、无 retry、无 schema repair；此时 Prompt v1 的 dev HEM/Macro-F1 为
+`0.9375/0.9011`，排除 few-shot ID 后为 `0.9167/0.8293`，排除全部 few-shot cluster 后为
+`0.9000/0.7639`。唯一一次 dev Prompt 修订只补充两个一般边界：
+“比较/搜索/浏览/规划本身可构成当前行动”和“已有当前体验/方向但方式未定属于 ambiguous”。选定 Prompt v2
+后，完整 dev、36-case ID-held-out 和 30-case cluster-held-out 的 HEM/Macro-F1 均为
+`1.0000/1.0000`，0 schema/provider
+failure；实际 input/output 为 `156556/3104` tokens，按 2026-08-22 价格快照估算 `$0.129057`，P50/P95
+为 `1235.9/1879.6 ms`。
+
+该结果只用于选择和冻结 dev 配置，不是 test 或生产泛化结论；Prompt v2 选定后不再继续按 dev 追分，test
+仍未运行。与 B1 相比，B2a dev full-HEM 差值为 `+0.2292`，同一调参 dev 上的 selection-set descriptive
+paired cluster 95% interval 为 `[+0.1111,+0.3636]`，不解释为泛化置信区间；near-OOS/no-intent 的 dev
+cluster 不足，只保留 point estimate。缓存重跑只证明流水线复现，不证明模型重复采样稳定。
 
 **Exit gate IE2**
 
-- metric golden tests、cluster bootstrap seed test、confusion/badcase snapshot tests 通过；
-- B0/B1/B2a 能完整跑 dev 并输出统一 prediction schema；
-- 重跑缓存结果不产生网络调用且 metrics 相同；
-- test 仍未用于阈值、Prompt、few-shot 或 prototype 选择。
+- [x] metric golden tests、cluster bootstrap seed test、confusion/badcase snapshot tests 通过；
+- [x] B0/B1/B2a 能完整跑 dev 并输出统一 prediction schema；
+- [x] 重跑缓存结果不产生网络调用且 metrics 相同；
+- [x] test 仍未用于阈值、Prompt、few-shot 或 prototype 选择。
 
 ### IE3：B2b/B3 公平消融与正式运行（第 6～7 天）
 

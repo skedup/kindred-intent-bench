@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,9 +12,14 @@ from typing import ParamSpec, TypeVar
 import click
 
 from intentbench import __version__
+from intentbench.adapters.base import ProviderError
+from intentbench.adapters.google import GoogleGenerativeLanguageClient
 from intentbench.annotation import validate_annotation_artifacts
+from intentbench.baselines import BaselineRunError, run_b0_dev, run_b1_dev, run_b2a_dev
 from intentbench.dataset import CandidateDatasetError, validate_candidate_artifact
+from intentbench.embedding import EmbeddingCacheError
 from intentbench.freeze import FreezeGuardError, verify_test_guard
+from intentbench.generation_cache import GenerationCacheError
 from intentbench.grounding import (
     GroundingContractError,
     load_grounding_snapshot,
@@ -22,10 +28,16 @@ from intentbench.grounding import (
 from intentbench.materialize import MaterializationContractError, materialize_adjudicated_cases
 from intentbench.providers import (
     READINESS_ROLES,
+    load_readiness_inputs,
     load_readiness_record,
     merge_provider_readiness,
     run_provider_readiness,
     write_readiness_record,
+)
+from intentbench.reporting import (
+    EvaluationArtifactError,
+    compare_frozen_dev,
+    evaluate_frozen_dev,
 )
 from intentbench.review import (
     BlindReviewItem,
@@ -734,6 +746,288 @@ def dataset_reviews_revise(
     except (OSError, ReviewContractError, ValueError) as exc:
         raise click.ClickException(str(exc)) from exc
     report["revised_item_id"] = review_item_id
+    click.echo(json.dumps(report, ensure_ascii=False, sort_keys=True))
+
+
+@main.group("evaluate")
+def evaluate_group() -> None:
+    """Generate deterministic artifacts from cached frozen-dev predictions."""
+
+
+def _frozen_dev_options(function: Callable[P, R]) -> Callable[P, R]:
+    function = click.option(
+        "--cases",
+        "cases_path",
+        type=click.Path(path_type=Path, exists=True, dir_okay=False),
+        default=Path("data/kir-pilot-v2/dev.jsonl"),
+        show_default=True,
+    )(function)
+    function = click.option(
+        "--taxonomy",
+        "taxonomy_path",
+        type=click.Path(path_type=Path, exists=True, dir_okay=False),
+        default=Path("configs/kindred-activity-intents-v2.yaml"),
+        show_default=True,
+    )(function)
+    function = click.option(
+        "--dataset-manifest",
+        "dataset_manifest_path",
+        type=click.Path(path_type=Path, exists=True, dir_okay=False),
+        default=Path("data/kir-pilot-v2/freeze-manifest.json"),
+        show_default=True,
+    )(function)
+    function = click.option(
+        "--repository-root",
+        type=click.Path(path_type=Path, exists=True, file_okay=False),
+        default=Path("."),
+        show_default=True,
+    )(function)
+    return function
+
+
+@evaluate_group.command("dev")
+@_frozen_dev_options
+@click.option(
+    "--predictions",
+    "predictions_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    required=True,
+)
+@click.option(
+    "--output-dir",
+    type=click.Path(path_type=Path, file_okay=False),
+    required=True,
+)
+def evaluate_dev(
+    cases_path: Path,
+    taxonomy_path: Path,
+    dataset_manifest_path: Path,
+    repository_root: Path,
+    predictions_path: Path,
+    output_dir: Path,
+) -> None:
+    """Write metrics, normalized confusion, and all deterministic dev badcases."""
+
+    try:
+        report = evaluate_frozen_dev(
+            cases_path=cases_path,
+            predictions_path=predictions_path,
+            taxonomy_path=taxonomy_path,
+            dataset_manifest_path=dataset_manifest_path,
+            output_dir=output_dir,
+            repository_root=repository_root,
+        )
+    except (OSError, EvaluationArtifactError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(json.dumps(report, ensure_ascii=False, sort_keys=True))
+
+
+@evaluate_group.command("compare-dev")
+@_frozen_dev_options
+@click.option(
+    "--left-predictions",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    required=True,
+)
+@click.option(
+    "--right-predictions",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    required=True,
+)
+@click.option("--left-id", required=True)
+@click.option("--right-id", required=True)
+@click.option(
+    "--output",
+    "output_path",
+    type=click.Path(path_type=Path, dir_okay=False),
+    required=True,
+)
+@click.option("--iterations", type=click.IntRange(min=1), default=10_000, show_default=True)
+@click.option("--seed", type=int, default=20_260_820, show_default=True)
+def evaluate_compare_dev(
+    cases_path: Path,
+    taxonomy_path: Path,
+    dataset_manifest_path: Path,
+    repository_root: Path,
+    left_predictions: Path,
+    right_predictions: Path,
+    left_id: str,
+    right_id: str,
+    output_path: Path,
+    iterations: int,
+    seed: int,
+) -> None:
+    """Write registered right-minus-left paired cluster-bootstrap dev results."""
+
+    try:
+        report = compare_frozen_dev(
+            cases_path=cases_path,
+            left_predictions_path=left_predictions,
+            right_predictions_path=right_predictions,
+            left_id=left_id,
+            right_id=right_id,
+            taxonomy_path=taxonomy_path,
+            dataset_manifest_path=dataset_manifest_path,
+            output_path=output_path,
+            repository_root=repository_root,
+            iterations=iterations,
+            seed=seed,
+        )
+    except (OSError, EvaluationArtifactError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(json.dumps(report, ensure_ascii=False, sort_keys=True))
+
+
+@main.group("baseline")
+def baseline_group() -> None:
+    """Run registered B0/B1 baselines over frozen dev only."""
+
+
+def _baseline_dev_options(function: Callable[P, R]) -> Callable[P, R]:
+    function = click.option(
+        "--experiment",
+        "experiment_path",
+        type=click.Path(path_type=Path, exists=True, dir_okay=False),
+        default=Path("configs/kir-pilot-v2-experiment.yaml"),
+        show_default=True,
+    )(function)
+    return _frozen_dev_options(function)
+
+
+@baseline_group.command("b0-dev")
+@_baseline_dev_options
+@click.option(
+    "--output-dir",
+    type=click.Path(path_type=Path, file_okay=False),
+    required=True,
+)
+def baseline_b0_dev(
+    cases_path: Path,
+    taxonomy_path: Path,
+    dataset_manifest_path: Path,
+    repository_root: Path,
+    experiment_path: Path,
+    output_dir: Path,
+) -> None:
+    """Generate deterministic rule predictions and a unified dev manifest."""
+
+    try:
+        report = run_b0_dev(
+            cases_path=cases_path,
+            taxonomy_path=taxonomy_path,
+            dataset_manifest_path=dataset_manifest_path,
+            experiment_path=experiment_path,
+            output_dir=output_dir,
+            repository_root=repository_root,
+        )
+    except (OSError, BaselineRunError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(json.dumps(report, ensure_ascii=False, sort_keys=True))
+
+
+@baseline_group.command("b1-dev")
+@_baseline_dev_options
+@click.option(
+    "--cache-dir",
+    type=click.Path(path_type=Path, file_okay=False),
+    default=Path(".provider-cache/b1-embeddings-v2"),
+    show_default=True,
+)
+@click.option(
+    "--output-dir",
+    type=click.Path(path_type=Path, file_okay=False),
+    required=True,
+)
+def baseline_b1_dev(
+    cases_path: Path,
+    taxonomy_path: Path,
+    dataset_manifest_path: Path,
+    repository_root: Path,
+    experiment_path: Path,
+    cache_dir: Path,
+    output_dir: Path,
+) -> None:
+    """Embed frozen dev, calibrate the registered grid, and persist B1 artifacts."""
+
+    try:
+        models, _fixture = load_readiness_inputs(
+            experiment_path,
+            Path("tests/fixtures/provider-smoke.json"),
+        )
+        spec = models.embedding
+        api_key = os.environ.get(spec.api_key_env)
+        if not api_key:
+            raise BaselineRunError(f"missing embedding credential environment: {spec.api_key_env}")
+        with GoogleGenerativeLanguageClient(
+            api_key=api_key,
+            base_url=spec.base_url,
+            timeout_seconds=spec.timeout_seconds,
+        ) as client:
+            report = run_b1_dev(
+                client=client,
+                cache_dir=cache_dir,
+                cases_path=cases_path,
+                taxonomy_path=taxonomy_path,
+                dataset_manifest_path=dataset_manifest_path,
+                experiment_path=experiment_path,
+                output_dir=output_dir,
+                repository_root=repository_root,
+            )
+    except (OSError, BaselineRunError, EmbeddingCacheError, ProviderError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(json.dumps(report, ensure_ascii=False, sort_keys=True))
+
+
+@baseline_group.command("b2a-dev")
+@_baseline_dev_options
+@click.option(
+    "--cache-dir",
+    type=click.Path(path_type=Path, file_okay=False),
+    default=Path(".provider-cache/b2a-primary-v1"),
+    show_default=True,
+)
+@click.option(
+    "--output-dir",
+    type=click.Path(path_type=Path, file_okay=False),
+    required=True,
+)
+def baseline_b2a_dev(
+    cases_path: Path,
+    taxonomy_path: Path,
+    dataset_manifest_path: Path,
+    repository_root: Path,
+    experiment_path: Path,
+    cache_dir: Path,
+    output_dir: Path,
+) -> None:
+    """Run the registered primary one-stage/one-call baseline over frozen dev."""
+
+    try:
+        models, _fixture = load_readiness_inputs(
+            experiment_path,
+            Path("tests/fixtures/provider-smoke.json"),
+        )
+        spec = models.primary_decision
+        api_key = os.environ.get(spec.api_key_env)
+        if not api_key:
+            raise BaselineRunError(f"missing primary credential environment: {spec.api_key_env}")
+        with GoogleGenerativeLanguageClient(
+            api_key=api_key,
+            base_url=spec.base_url,
+            timeout_seconds=spec.timeout_seconds,
+        ) as client:
+            report = run_b2a_dev(
+                client=client,
+                cache_dir=cache_dir,
+                cases_path=cases_path,
+                taxonomy_path=taxonomy_path,
+                dataset_manifest_path=dataset_manifest_path,
+                experiment_path=experiment_path,
+                output_dir=output_dir,
+                repository_root=repository_root,
+            )
+    except (OSError, BaselineRunError, GenerationCacheError, ProviderError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
     click.echo(json.dumps(report, ensure_ascii=False, sort_keys=True))
 
 

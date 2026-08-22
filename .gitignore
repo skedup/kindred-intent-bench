@@ -19,9 +19,13 @@ htmlcov/
 provider-responses/
 *.provider-response.json
 
-# IE0 does not version ad-hoc experiment probes.
-experiments/*/
+# Ad-hoc and dev experiment outputs stay local until a reduced reference run is selected.
+experiments/*
 !experiments/.gitkeep
+!experiments/reference/
+experiments/reference/*
+!experiments/reference/kir-pilot-v2-ie2-final/
+!experiments/reference/kir-pilot-v2-ie2-final/**
 
 # Human-review workbooks are versioned; rendered previews and inspection dumps are local QA.
 outputs/**/previews/

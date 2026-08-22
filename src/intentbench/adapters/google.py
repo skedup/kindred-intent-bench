@@ -86,16 +86,6 @@ class GoogleGenerativeLanguageClient:
             "generationConfig": generation_config,
         }
         data, raw, latency_ms = self._post(f"/v1beta/models/{model}:generateContent", payload)
-        try:
-            text = data["candidates"][0]["content"]["parts"][0]["text"]
-            value = json.loads(text)
-        except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
-            raise ProviderError(
-                "schema_invalid", "structured response was absent or invalid"
-            ) from exc
-        if not isinstance(value, dict):
-            raise ProviderError("schema_invalid", "structured response must be a JSON object")
-
         usage_raw = data.get("usageMetadata")
         if not isinstance(usage_raw, dict):
             raise ProviderError("usage_missing", "generation response lacks usageMetadata")
@@ -112,21 +102,69 @@ class GoogleGenerativeLanguageClient:
             for key, value in usage_raw.items()
             if isinstance(value, int) and not isinstance(value, bool)
         }
+        raw_response_sha256 = hashlib.sha256(raw).hexdigest()
+        reported_model_raw = data.get("modelVersion")
+        reported_model = reported_model_raw if isinstance(reported_model_raw, str) else None
+        try:
+            text = data["candidates"][0]["content"]["parts"][0]["text"]
+            value = json.loads(text)
+        except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
+            raise ProviderError(
+                "schema_invalid",
+                "structured response was absent or invalid",
+                reported_model=reported_model,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                total_tokens=total_tokens,
+                latency_ms=latency_ms,
+                raw_response_sha256=raw_response_sha256,
+                usage_metadata=numeric_usage,
+                structured_output_mode="provider_json_schema",
+            ) from exc
+        if not isinstance(value, dict):
+            raise ProviderError(
+                "schema_invalid",
+                "structured response must be a JSON object",
+                reported_model=reported_model,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                total_tokens=total_tokens,
+                latency_ms=latency_ms,
+                raw_response_sha256=raw_response_sha256,
+                usage_metadata=numeric_usage,
+                structured_output_mode="provider_json_schema",
+            )
         return GenerationResult(
             value=value,
             requested_model=model,
-            reported_model=data.get("modelVersion"),
+            reported_model=reported_model,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             total_tokens=total_tokens,
             latency_ms=latency_ms,
-            raw_response_sha256=hashlib.sha256(raw).hexdigest(),
+            raw_response_sha256=raw_response_sha256,
             usage_metadata=numeric_usage,
             structured_output_mode="provider_json_schema",
         )
 
-    def embed(self, *, model: str, text: str) -> EmbeddingResult:
-        payload = {"model": f"models/{model}", "content": {"parts": [{"text": text}]}}
+    def embed(
+        self,
+        *,
+        model: str,
+        text: str,
+        task_type: str | None = None,
+        output_dimensionality: int | None = None,
+    ) -> EmbeddingResult:
+        payload: dict[str, Any] = {
+            "model": f"models/{model}",
+            "content": {"parts": [{"text": text}]},
+        }
+        if task_type is not None:
+            payload["taskType"] = task_type
+        if output_dimensionality is not None:
+            if output_dimensionality <= 0:
+                raise ValueError("output_dimensionality must be positive")
+            payload["outputDimensionality"] = output_dimensionality
         data, raw, latency_ms = self._post(f"/v1beta/models/{model}:embedContent", payload)
         try:
             values = tuple(float(value) for value in data["embedding"]["values"])

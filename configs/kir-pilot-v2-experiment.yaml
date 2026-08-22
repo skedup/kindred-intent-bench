@@ -1,0 +1,300 @@
+schema_version: 1
+status: draft
+experiment_id: kir-pilot-v2
+dataset_version: kir-pilot-v2
+taxonomy_version: kindred-activity-intents-v2
+dataset_freeze_sha256: e079e192837da06daa8a00ab4cf73174ee4463bdeeb9b3f0271e52929597d9aa
+artifacts:
+  dependency_lock:
+    path: uv.lock
+    sha256: d44e5ab30f2a4f7b08768649c72c02704fbda31e0ab4b65ba644c68abd84521e
+  b2a_prompt:
+    path: prompts/b2a-one-stage/v2.txt
+    sha256: 68cacf16e75605c463c414efe9985a2861709c97ef1fd5f78d9d977251a753c3
+  b2a_few_shot_selection:
+    path: configs/kir-pilot-v2-b2a-few-shot-selection.yaml
+    sha256: f71097ec809e81569b0ede513ead18b3cc83daddae3fd19b7a56cb6ae6f326dc
+  b2a_prompt_selection:
+    path: configs/kir-pilot-v2-b2a-prompt-selection.yaml
+    sha256: 9df378e7cc21cd2daaf28cc93454dda0737c197f71e4ef6ca1b66fecb40d3f31
+
+models:
+  authority:
+    primary_source: kindred_openclaw_main_session_runtime_metadata
+    provider_pool_source: kindred_runtime_configuration
+    observed_on: "2026-08-21"
+  runtime_candidate_pool:
+    - provider: google
+      models: [gemini-3.6-flash, gemini-3.5-flash]
+    - provider: x-ai
+      models: [grok-4.6, grok-4.3, grok-4.20-0309-reasoning, grok-4.20-0309-non-reasoning]
+    - provider: deepseek
+      models: [deepseek-v4-pro, deepseek-v4-flash]
+    - provider: openai
+      models: [gpt-5.6-luna]
+  selection_rationale:
+    primary_decision: current_kindred_openclaw_main_session
+    weak_decision: cross_provider_low_cost_weak_replication
+    cross_provider_reference: cross_provider_reference_replication
+    non_selected_candidates: grok_deferred_to_separate_model_robustness_experiment
+  comparison_matrix:
+    primary_confirmatory:
+      roles: [primary_decision]
+      arms: [B2a, B2b, B3]
+      comparison: B3_minus_B2b
+      global_verdict_authority: true
+    cross_provider_replication:
+      roles: [weak_decision, cross_provider_reference]
+      arms: [B2b, B3]
+      comparison: within_model_B3_minus_B2b
+      pooled_score_or_verdict: false
+      primary_model_switch_after_test: forbidden
+  primary_decision:
+    provider: google_generative_language
+    model: gemini-3.6-flash
+    adapter: google_generate_content_v1beta
+    adapter_revision: v2
+    base_url: https://generativelanguage.googleapis.com
+    api_key_env: GEMINI_API_KEY
+    timeout_seconds: 30.0
+    request_max_output_tokens: 512
+    capability_context_window: 1048576
+    capability_max_output_tokens: 65536
+    generation_parameters:
+      thinkingConfig:
+        thinkingLevel: minimal
+    unsupported_generation_parameters: [temperature, top_k, top_p]
+    expected_usage_fields: [promptTokenCount, totalTokenCount]
+    structured_output_mode: provider_json_schema
+    required_arms: [B2a, B2b, B3]
+    verdict_authority: true
+  weak_decision:
+    provider: deepseek
+    model: deepseek-v4-flash
+    adapter: deepseek_chat_completions_json_v1
+    adapter_revision: v2
+    base_url: https://api.deepseek.com
+    api_key_env: DEEPSEEK_API_KEY
+    timeout_seconds: 60.0
+    request_max_output_tokens: 512
+    generation_parameters:
+      thinking:
+        type: enabled
+      reasoning_effort: high
+    expected_usage_fields: [prompt_tokens, completion_tokens, total_tokens]
+    structured_output_mode: json_object_plus_local_schema_validation
+    required_arms: [B2b, B3]
+    verdict_authority: false
+  cross_provider_reference:
+    provider: openai
+    model: gpt-5.6-luna
+    adapter: openai_responses_json_schema_v1
+    adapter_revision: v2
+    base_url: https://api.openai.com/v1
+    api_key_env: OPENAI_API_KEY
+    timeout_seconds: 60.0
+    request_max_output_tokens: 512
+    generation_parameters:
+      reasoning:
+        effort: high
+    expected_usage_fields: [input_tokens, output_tokens, total_tokens]
+    structured_output_mode: provider_json_schema
+    required_arms: [B2b, B3]
+    verdict_authority: false
+  embedding:
+    provider: google_generative_language
+    model: gemini-embedding-001
+    adapter: google_embed_content_v1beta
+    base_url: https://generativelanguage.googleapis.com
+    api_key_env: GEMINI_API_KEY
+    timeout_seconds: 30.0
+    expected_dimension: 3072
+    task_type: SEMANTIC_SIMILARITY
+    output_dimensionality: 3072
+
+b0:
+  ruleset_version: lexical-open-set-v1
+  input_serializer: context-json-v1
+  gate_order: [actionability, oos, ambiguity, in_scope]
+  no_intent_patterns:
+    - '没有别的安排'
+    - '暂时不准备吃东西'
+    - '不是现在'
+    - '接下来还没想好'
+    - '没有下一步计划'
+  oos_patterns:
+    - '已有.*(?:改|修改|裁剪|调色)|(?:文字|尺寸).*(?:改|修改)'
+    - '比较.*(?:菜单|食谱).*(?:不下单|不吃|不准备)'
+    - '(?:老同学|朋友|博主|第三方).*(?:发|联系|消息)'
+    - '洗.*澡'
+    - '(?:网页|线上).*(?:展|美术馆)'
+    - '(?:吸尘|打扫|浇水|修剪)'
+    - '(?:电子游戏|玩一局|听音乐|听歌|跑步|慢跑|骑车|私信)'
+  ambiguity_patterns:
+    - '(?:也可能|或者|还是|都可以|还没决定|没有想法|类型还没决定|暂时不选)'
+    - '具体内容.*没有'
+    - '用什么方式'
+  future_patterns: ['哪天', '晚点', '以后', '明天', '下周', '不是现在']
+  in_scope_patterns:
+    create_picture:
+      - '(?:画成|画一|画张|画成一幅|新图|新海报|生成一张|创作.*(?:图|画)|做成一张新的)'
+    dine_out:
+      - '(?:餐厅|小馆子|咖啡馆|面包房).*(?:吃|喝|用餐)'
+      - '(?:出门|外面).*(?:吃|喝)'
+    eat_at_home:
+      - '(?:在家|厨房|留在屋里).*(?:吃|煮|做|烤|下单|包)'
+      - '(?:烤|煮|做|包).*(?:在家|厨房|留在屋里)'
+    play_xiaohongshu:
+      - '小红书'
+      - '(?:看看|浏览|刷|打开).*(?:别人|大家|陌生人).*(?:分享|发布|帖子|日常|生活)'
+      - '(?:大家|别人|陌生人).*(?:分享|发布).*(?:看看|浏览)'
+      - '公开帖子'
+    reach_out_to_user:
+      - '(?:给你|问问你|联系.*你|和你分享|留一句.*问候|发一句.*晚安)'
+    rest:
+      - '(?:安静.{0,4}休息|闭眼|躺下|睡(?:觉|个|一)|歇|什么也不做.*放松)'
+    take_a_walk:
+      - '(?:散步|步行|沿河.*走|走一圈|出去走走)'
+    visit_cultural_place:
+      - '(?:美术馆|博物馆|艺术中心|图书馆|书店|展馆).*(?:现场|看展|参观|逛|看看)'
+      - '(?:去|到).*(?:美术馆|博物馆|艺术中心|图书馆|书店|展馆)'
+  mixed_oos_choice_is_ambiguous: true
+  unmatched_default: no_intent
+
+b1:
+  input_serializer: context-json-v1
+  vector_normalization: l2_each_then_centroid_then_l2
+  similarity: cosine
+  activity_prototypes: taxonomy_canonical_examples_only
+  oos_prototypes: dev_gold_oos_max_8
+  no_intent_prototypes: dev_gold_no_intent_max_8
+  ambiguous_prototype: none
+  prototype_selection:
+    algorithm: tag_stratified_unique_cluster_round_robin_case_id_v1
+    oos_maximum: 8
+    oos_strata: [near_oos, far_oos, __other__]
+    no_intent_maximum: 8
+    no_intent_strata: [hard_negative, __other__]
+  scores:
+    activity_score: max_cosine_query_to_activity_centroids
+    no_intent_score: cosine_query_to_no_intent_centroid
+    oos_score: cosine_query_to_oos_centroid
+    actionability_score: max_activity_or_oos_minus_no_intent
+  gate_order: [actionability, oos, ambiguity, in_scope]
+  threshold_grid:
+    tau_actionability: [-0.10, 0.00, 0.10, 0.20]
+    tau_oos_margin: [-0.05, 0.00, 0.05, 0.10]
+    tau_activity_min: [0.30, 0.40, 0.50, 0.60]
+    tau_ambiguity: [0.02, 0.05, 0.08, 0.12]
+  selection_order: [dev_hierarchical_exact_match_desc, dev_decision_macro_f1_desc, sorted_parameter_tuple_asc]
+  selected_thresholds:
+    tau_actionability: 0.00
+    tau_oos_margin: 0.00
+    tau_activity_min: 0.30
+    tau_ambiguity: 0.02
+  selected_prototype_case_ids:
+    oos:
+      - kir-pilot-v2-0082
+      - kir-pilot-v2-0097
+      - kir-pilot-v2-0086
+      - kir-pilot-v2-0101
+      - kir-pilot-v2-0090
+      - kir-pilot-v2-0108
+      - kir-pilot-v2-0091
+      - kir-pilot-v2-0095
+    no_intent:
+      - kir-pilot-v2-0113
+      - kir-pilot-v2-0131
+      - kir-pilot-v2-0115
+      - kir-pilot-v2-0133
+      - kir-pilot-v2-0134
+
+llm:
+  input_serializer: context-json-v1
+  prompt_renderer: literal-three-placeholder-v1
+  response_schema: prediction-semantic-fields-v1
+  shared_few_shot:
+    selection_algorithm: manual_risk_balanced_cluster_distinct_v1
+    selection_receipt_artifact: b2a_few_shot_selection
+    case_ids:
+      - kir-pilot-v2-0035
+      - kir-pilot-v2-0051
+      - kir-pilot-v2-0071
+      - kir-pilot-v2-0082
+      - kir-pilot-v2-0090
+      - kir-pilot-v2-0108
+      - kir-pilot-v2-0113
+      - kir-pilot-v2-0131
+      - kir-pilot-v2-0134
+      - kir-pilot-v2-0143
+      - kir-pilot-v2-0148
+      - kir-pilot-v2-0158
+    required_decision_counts:
+      in_scope: 3
+      oos: 3
+      no_intent: 3
+      ambiguous: 3
+    evidence_quote_in_prompt: false
+    review_fields_in_prompt: false
+  cache:
+    format: normalized-generation-record-v2
+    key_fields:
+      - schema_version
+      - normalized_context_sha256
+      - prompt_instance_sha256
+      - taxonomy_sha256
+      - prompt_template_sha256
+      - few_shot_payload_sha256
+      - response_schema_sha256
+      - model
+      - adapter
+      - adapter_revision
+      - structured_output_mode
+      - max_output_tokens
+      - generation_parameters_sha256
+    cache_provider_failures: true
+  b2a:
+    prompt_artifact: b2a_prompt
+    prompt_selection_receipt_artifact: b2a_prompt_selection
+    model_role: primary_decision
+    calls_per_case: 1
+    request_max_output_tokens: 512
+    retry_policy: none
+    schema_repair_policy: reject
+    selected_prompt_version: v2
+  pricing:
+    provider: google_generative_language
+    model: gemini-3.6-flash
+    tier: standard_paid_list
+    currency: USD
+    snapshot_date: "2026-08-22"
+    input_per_million_tokens: 0.75
+    output_per_million_tokens: 3.75
+    source: https://ai.google.dev/gemini-api/docs/pricing
+
+bootstrap:
+  unit: bootstrap_cluster_id
+  paired: true
+  confidence_level: 0.95
+  interval_method: percentile
+  quantile_method: type_7_linear_interpolation
+  iterations: 10000
+  seed: 20260820
+  minimum_clusters_per_required_slice: 8
+
+verdict:
+  comparison: B3_minus_B2b
+  budget_difference_max: 0.10
+  negative:
+    hem_upper_lte: 0.0
+    id_intent_macro_f1_upper_lt: -0.03
+    near_oos_recall_upper_lt: -0.05
+    no_intent_recall_upper_lt: -0.05
+    context_distractor_error_comparison: B3_gt_B2b
+    schema_invalid_count_comparison: B3_gt_B2b
+  promising:
+    hem_lower_gt: 0.0
+    id_intent_macro_f1_lower_gte: -0.03
+    near_oos_recall_point_gte: 0.0
+    near_oos_recall_lower_gte: -0.05
+    no_intent_recall_lower_gte: -0.05

@@ -38,6 +38,7 @@ class LLMModelSpec(StrictModel):
     provider: ProviderName
     model: str
     adapter: str
+    adapter_revision: str = Field(default="v2", pattern=r"^v[0-9]+$")
     base_url: str
     api_key_env: str
     timeout_seconds: float = Field(gt=0)
@@ -84,6 +85,17 @@ class EmbeddingModelSpec(StrictModel):
     api_key_env: str
     timeout_seconds: float = Field(gt=0)
     expected_dimension: int = Field(gt=0)
+    task_type: Literal["SEMANTIC_SIMILARITY"] | None = None
+    output_dimensionality: int | None = Field(default=None, gt=0)
+
+    @model_validator(mode="after")
+    def validate_dimension(self) -> EmbeddingModelSpec:
+        if (
+            self.output_dimensionality is not None
+            and self.output_dimensionality != self.expected_dimension
+        ):
+            raise ValueError("embedding output and expected dimensions must agree")
+        return self
 
 
 class ReadinessModels(StrictModel):
@@ -302,7 +314,12 @@ def _embedding_smoke(spec: EmbeddingModelSpec, fixture: ReadinessFixture) -> dic
             base_url=spec.base_url,
             timeout_seconds=spec.timeout_seconds,
         ) as client:
-            result = client.embed(model=spec.model, text=fixture.embedding_text)
+            result = client.embed(
+                model=spec.model,
+                text=fixture.embedding_text,
+                task_type=spec.task_type,
+                output_dimensionality=spec.output_dimensionality,
+            )
         dimension_match = len(result.vector) == spec.expected_dimension
         return {
             "role": "embedding",

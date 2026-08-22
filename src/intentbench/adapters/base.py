@@ -31,10 +31,32 @@ class EmbeddingResult:
 class ProviderError(RuntimeError):
     """Sanitized Provider failure safe for readiness metadata and logs."""
 
-    def __init__(self, error_type: str, message: str, status_code: int | None = None) -> None:
+    def __init__(
+        self,
+        error_type: str,
+        message: str,
+        status_code: int | None = None,
+        *,
+        reported_model: str | None = None,
+        input_tokens: int | None = None,
+        output_tokens: int | None = None,
+        total_tokens: int | None = None,
+        latency_ms: float | None = None,
+        raw_response_sha256: str | None = None,
+        usage_metadata: dict[str, int] | None = None,
+        structured_output_mode: str | None = None,
+    ) -> None:
         super().__init__(message)
         self.error_type = error_type
         self.status_code = status_code
+        self.reported_model = reported_model
+        self.input_tokens = input_tokens
+        self.output_tokens = output_tokens
+        self.total_tokens = total_tokens
+        self.latency_ms = latency_ms
+        self.raw_response_sha256 = raw_response_sha256
+        self.usage_metadata = usage_metadata
+        self.structured_output_mode = structured_output_mode
 
 
 class StructuredGenerationClient(Protocol):
@@ -50,4 +72,11 @@ class StructuredGenerationClient(Protocol):
 
 
 class EmbeddingClient(Protocol):
-    def embed(self, *, model: str, text: str) -> EmbeddingResult: ...
+    def embed(
+        self,
+        *,
+        model: str,
+        text: str,
+        task_type: str | None = None,
+        output_dimensionality: int | None = None,
+    ) -> EmbeddingResult: ...

@@ -1,0 +1,48 @@
+schema_version: 1
+receipt_id: kir-pilot-v2-b2a-few-shot-v1
+dataset_version: kir-pilot-v2
+split: dev
+dev_sha256: c4807ed66def5fe04402c8ee5c7d1a5460965dfc32f063a3f272b522fceb03c5
+selection_algorithm: manual_risk_balanced_cluster_distinct_v1
+case_ids:
+  - kir-pilot-v2-0035
+  - kir-pilot-v2-0051
+  - kir-pilot-v2-0071
+  - kir-pilot-v2-0082
+  - kir-pilot-v2-0090
+  - kir-pilot-v2-0108
+  - kir-pilot-v2-0113
+  - kir-pilot-v2-0131
+  - kir-pilot-v2-0134
+  - kir-pilot-v2-0143
+  - kir-pilot-v2-0148
+  - kir-pilot-v2-0158
+required_decision_counts:
+  in_scope: 3
+  oos: 3
+  no_intent: 3
+  ambiguous: 3
+global_constraints:
+  - IDs and order were fixed from frozen dev before the first B2a Provider run.
+  - Exactly three examples represent each routing decision.
+  - No two selected examples share a bootstrap cluster.
+  - Prompt supervision excludes evidence_quote, tags, review fields, annotation notes, and case IDs.
+  - Test cases and test predictions are forbidden from selection.
+coverage_policy: >-
+  The examples teach routing and rejection boundaries, not all eight Activity labels. Full intent
+  coverage comes from the complete taxonomy definitions and canonical examples embedded in every
+  prompt. The three in-scope examples deliberately cover a brandless catalog case, a weak-model
+  rest/eat boundary, and a multi-turn reconsideration.
+case_rationales:
+  kir-pilot-v2-0035: [in_scope, brandless_xhs, weak_model_probe]
+  kir-pilot-v2-0051: [in_scope, multi_turn_override, rest_eat_boundary]
+  kir-pilot-v2-0071: [in_scope, multi_turn_reconsideration, third_intent_family]
+  kir-pilot-v2-0082: [oos, near_oos, hard_negative]
+  kir-pilot-v2-0090: [oos, near_oos, different_sibling_boundary]
+  kir-pilot-v2-0108: [oos, far_oos, rejection_range]
+  kir-pilot-v2-0113: [no_intent, multi_turn_resolution, quiet_control]
+  kir-pilot-v2-0131: [no_intent, future_not_now, quiet_control]
+  kir-pilot-v2-0134: [no_intent, completed_activity, quiet_control]
+  kir-pilot-v2-0143: [ambiguous, multi_turn_reconsideration, hard_negative]
+  kir-pilot-v2-0148: [ambiguous, underspecified_content]
+  kir-pilot-v2-0158: [ambiguous, mixed_catalog_and_oos_candidates]

@@ -48,7 +48,9 @@ class ExperimentLock(StrictModel):
     dataset_freeze_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     artifacts: dict[str, ArtifactDigest] = Field(default_factory=dict)
     models: dict[str, Any]
+    b0: dict[str, Any] = Field(default_factory=dict)
     b1: dict[str, Any]
+    llm: dict[str, Any] = Field(default_factory=dict)
     bootstrap: dict[str, Any]
     verdict: dict[str, Any]
 

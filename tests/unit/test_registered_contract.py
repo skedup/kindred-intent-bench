@@ -8,6 +8,9 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
+from intentbench.b0 import B0Config
+from intentbench.b1 import B1Config
+from intentbench.b2a import LLMExperimentConfig, validate_few_shot_cases
 from intentbench.bootstrap import (
     BOOTSTRAP_ITERATIONS,
     BOOTSTRAP_SEED,
@@ -16,9 +19,12 @@ from intentbench.bootstrap import (
 )
 from intentbench.freeze import ExperimentLock, sha256_file
 from intentbench.providers import ReadinessModels, load_readiness_inputs
+from intentbench.reporting import load_formal_cases
+from intentbench.schemas import Decision
 
 EXPERIMENT_PATH = Path("configs/kir-pilot-v1-experiment.yaml")
 FIXTURE_PATH = Path("tests/fixtures/provider-smoke.json")
+V2_EXPERIMENT_PATH = Path("configs/kir-pilot-v2-experiment.yaml")
 
 
 def test_experiment_draft_registers_runtime_candidates_and_exact_statistics() -> None:
@@ -98,3 +104,47 @@ def test_model_role_and_global_verdict_authority_cannot_drift_silently() -> None
     drifted["comparison_matrix"]["cross_provider_replication"]["pooled_score_or_verdict"] = True
     with pytest.raises(ValidationError, match="seven-run contract"):
         ReadinessModels.model_validate(drifted)
+
+
+def test_v2_experiment_binds_frozen_dev_and_selected_b1_contract() -> None:
+    payload = yaml.safe_load(V2_EXPERIMENT_PATH.read_text(encoding="utf-8"))
+    lock = ExperimentLock.model_validate(payload)
+    b0 = B0Config.model_validate(payload["b0"])
+    b1 = B1Config.model_validate(payload["b1"])
+    llm = LLMExperimentConfig.model_validate(payload["llm"])
+    models = ReadinessModels.model_validate(payload["models"])
+    assert lock.status == "draft"
+    assert lock.dataset_version == "kir-pilot-v2"
+    assert lock.dataset_freeze_sha256 == sha256_file(Path("data/kir-pilot-v2/freeze-manifest.json"))
+    assert b0.gate_order == ["actionability", "oos", "ambiguity", "in_scope"]
+    assert models.embedding.task_type == "SEMANTIC_SIMILARITY"
+    assert models.embedding.output_dimensionality == 3072
+    assert b1.selected_thresholds == {
+        "tau_actionability": 0.0,
+        "tau_oos_margin": 0.0,
+        "tau_activity_min": 0.3,
+        "tau_ambiguity": 0.02,
+    }
+
+    dev_cases = {case.id: case for case in load_formal_cases(Path("data/kir-pilot-v2/dev.jsonl"))}
+    assert b1.selected_prototype_case_ids is not None
+    all_ids = [case_id for values in b1.selected_prototype_case_ids.values() for case_id in values]
+    assert set(all_ids) <= set(dev_cases)
+    clusters = [dev_cases[case_id].bootstrap_cluster_id for case_id in all_ids]
+    assert len(clusters) == len(set(clusters))
+
+    few_shots = validate_few_shot_cases(list(dev_cases.values()), llm.shared_few_shot)
+    assert len(few_shots) == 12
+    assert {case.gold.decision for case in few_shots} == set(Decision)
+    assert payload["artifacts"]["b2a_prompt"]["sha256"] == sha256_file(
+        Path("prompts/b2a-one-stage/v2.txt")
+    )
+    assert payload["artifacts"]["b2a_few_shot_selection"]["sha256"] == sha256_file(
+        Path("configs/kir-pilot-v2-b2a-few-shot-selection.yaml")
+    )
+    assert payload["artifacts"]["b2a_prompt_selection"]["sha256"] == sha256_file(
+        Path("configs/kir-pilot-v2-b2a-prompt-selection.yaml")
+    )
+    assert models.primary_decision.adapter_revision == "v2"
+    assert models.weak_decision.adapter_revision == "v2"
+    assert models.cross_provider_reference.adapter_revision == "v2"

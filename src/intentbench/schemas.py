@@ -417,7 +417,7 @@ class RunParameters(StrictModel):
     temperature: float | None = None
     top_p: float | None = None
     seed: int | None = None
-    max_calls: int = Field(ge=1)
+    max_calls: int = Field(ge=0)
     max_output_tokens_per_call: int = Field(ge=1)
     retry_policy: str
     schema_repair_policy: str

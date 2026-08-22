@@ -5,10 +5,90 @@ from __future__ import annotations
 import math
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from itertools import product
+from typing import Literal
 
-from intentbench.schemas import Decision
+from pydantic import Field, model_validator
+
+from intentbench.schemas import Case, Decision, Split, StrictModel
 
 Vector = Sequence[float]
+
+
+class PrototypeSelectionConfig(StrictModel):
+    algorithm: Literal["tag_stratified_unique_cluster_round_robin_case_id_v1"]
+    oos_maximum: int = Field(ge=1, le=8)
+    oos_strata: list[str] = Field(min_length=1)
+    no_intent_maximum: int = Field(ge=1, le=8)
+    no_intent_strata: list[str] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_strata(self) -> PrototypeSelectionConfig:
+        for strata in (self.oos_strata, self.no_intent_strata):
+            if len(strata) != len(set(strata)):
+                raise ValueError("prototype strata must be unique")
+            if "__other__" not in strata:
+                raise ValueError("prototype strata must contain the __other__ fallback")
+        return self
+
+
+class B1ThresholdGrid(StrictModel):
+    tau_actionability: list[float] = Field(min_length=1)
+    tau_oos_margin: list[float] = Field(min_length=1)
+    tau_activity_min: list[float] = Field(min_length=1)
+    tau_ambiguity: list[float] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_grid(self) -> B1ThresholdGrid:
+        for values in vars(self).values():
+            if len(values) != len(set(values)) or any(not math.isfinite(value) for value in values):
+                raise ValueError("B1 threshold axes must contain unique finite values")
+        return self
+
+
+class B1Config(StrictModel):
+    input_serializer: Literal["context-json-v1"]
+    vector_normalization: Literal["l2_each_then_centroid_then_l2"]
+    similarity: Literal["cosine"]
+    activity_prototypes: Literal["taxonomy_canonical_examples_only"]
+    oos_prototypes: Literal["dev_gold_oos_max_8"]
+    no_intent_prototypes: Literal["dev_gold_no_intent_max_8"]
+    ambiguous_prototype: Literal["none"]
+    prototype_selection: PrototypeSelectionConfig
+    scores: dict[str, str]
+    gate_order: list[str]
+    threshold_grid: B1ThresholdGrid
+    selection_order: list[str]
+    selected_thresholds: dict[str, float] | None
+    selected_prototype_case_ids: dict[str, list[str]] | None
+
+    @model_validator(mode="after")
+    def validate_registered_contract(self) -> B1Config:
+        if self.gate_order != ["actionability", "oos", "ambiguity", "in_scope"]:
+            raise ValueError("B1 gate order must be actionability, OOS, ambiguity, in-scope")
+        if self.selection_order != [
+            "dev_hierarchical_exact_match_desc",
+            "dev_decision_macro_f1_desc",
+            "sorted_parameter_tuple_asc",
+        ]:
+            raise ValueError("B1 threshold selection order violates the registered contract")
+        threshold_names = {
+            "tau_actionability",
+            "tau_oos_margin",
+            "tau_activity_min",
+            "tau_ambiguity",
+        }
+        if (
+            self.selected_thresholds is not None
+            and set(self.selected_thresholds) != threshold_names
+        ):
+            raise ValueError("registered B1 thresholds must contain the complete parameter tuple")
+        if self.selected_prototype_case_ids is not None:
+            if set(self.selected_prototype_case_ids) != {"oos", "no_intent"}:
+                raise ValueError("registered B1 prototypes must contain OOS and no-intent IDs")
+            if any(not case_ids for case_ids in self.selected_prototype_case_ids.values()):
+                raise ValueError("registered B1 prototype ID lists must not be empty")
+        return self
 
 
 def l2_normalize(vector: Vector) -> tuple[float, ...]:
@@ -50,6 +130,14 @@ class B1Thresholds:
         values = vars(self)
         return tuple(values[name] for name in sorted(values))
 
+    def as_dict(self) -> dict[str, float]:
+        return {
+            "tau_actionability": self.tau_actionability,
+            "tau_oos_margin": self.tau_oos_margin,
+            "tau_activity_min": self.tau_activity_min,
+            "tau_ambiguity": self.tau_ambiguity,
+        }
+
 
 @dataclass(frozen=True)
 class B1Scores:
@@ -69,6 +157,15 @@ class B1Scores:
                 if score == self.activity_score
             ),
             default="",
+        )
+
+    @property
+    def ranked_intents(self) -> tuple[str, ...]:
+        return tuple(
+            intent
+            for intent, _score in sorted(
+                self.activity_scores.items(), key=lambda item: (-item[1], item[0])
+            )
         )
 
 
@@ -126,3 +223,68 @@ def select_thresholds(
         scored,
         key=lambda item: (-item[0][0], -item[0][1], item[1].ordered_tuple()),
     )[1]
+
+
+def threshold_candidates(grid: B1ThresholdGrid) -> tuple[B1Thresholds, ...]:
+    return tuple(
+        B1Thresholds(*values)
+        for values in product(
+            grid.tau_actionability,
+            grid.tau_oos_margin,
+            grid.tau_activity_min,
+            grid.tau_ambiguity,
+        )
+    )
+
+
+def select_prototype_case_ids(
+    cases: Sequence[Case],
+    *,
+    decision: Decision,
+    maximum: int,
+    strata: Sequence[str],
+) -> tuple[str, ...]:
+    """Select registered dev-Gold prototypes by tag strata and then case ID."""
+
+    if decision not in {Decision.OOS, Decision.NO_INTENT}:
+        raise ValueError("B1 rejection prototypes only support OOS and no-intent")
+    if maximum < 1 or maximum > 8:
+        raise ValueError("B1 rejection prototype maximum must be in [1, 8]")
+    if "__other__" not in strata or len(strata) != len(set(strata)):
+        raise ValueError("prototype strata need one unique __other__ fallback")
+    candidates = [case for case in cases if case.gold.decision is decision]
+    if not candidates:
+        raise ValueError(f"dev has no {decision.value} prototype candidates")
+    if any(case.split is not Split.DEV for case in candidates):
+        raise ValueError("B1 prototype selection accepts dev Gold only")
+    if any(case.bootstrap_cluster_id is None for case in candidates):
+        raise ValueError("B1 prototype selection requires assigned dev clusters")
+
+    representative_by_cluster: dict[str, Case] = {}
+    for case in sorted(candidates, key=lambda item: item.id):
+        assert case.bootstrap_cluster_id is not None
+        representative_by_cluster.setdefault(case.bootstrap_cluster_id, case)
+    representatives = list(representative_by_cluster.values())
+
+    buckets: dict[str, list[str]] = {stratum: [] for stratum in strata}
+    for case in representatives:
+        stratum = next(
+            (
+                candidate
+                for candidate in strata
+                if candidate != "__other__" and candidate in case.tags
+            ),
+            "__other__",
+        )
+        buckets[stratum].append(case.id)
+
+    selected: list[str] = []
+    while len(selected) < min(maximum, len(representatives)):
+        added = False
+        for stratum in strata:
+            if buckets[stratum] and len(selected) < maximum:
+                selected.append(buckets[stratum].pop(0))
+                added = True
+        if not added:
+            break
+    return tuple(selected)

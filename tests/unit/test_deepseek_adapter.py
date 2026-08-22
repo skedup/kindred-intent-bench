@@ -121,3 +121,40 @@ def test_json_object_that_violates_schema_is_rejected_locally() -> None:
             max_output_tokens=512,
         )
     assert caught.value.error_type == "schema_invalid"
+    assert (
+        caught.value.input_tokens,
+        caught.value.output_tokens,
+        caught.value.total_tokens,
+    ) == (10, 2, 12)
+    assert caught.value.raw_response_sha256 is not None
+    assert caught.value.reported_model == "deepseek-v4-flash"
+
+
+def test_incomplete_response_preserves_billable_usage() -> None:
+    transport = httpx.MockTransport(
+        lambda _request: httpx.Response(
+            200,
+            json={
+                "model": "deepseek-v4-flash",
+                "choices": [{"finish_reason": "length", "message": {"content": ""}}],
+                "usage": {
+                    "prompt_tokens": 10,
+                    "completion_tokens": 512,
+                    "total_tokens": 522,
+                },
+            },
+        )
+    )
+    with (
+        DeepSeekChatClient(api_key="test-key", transport=transport) as client,
+        pytest.raises(ProviderError) as caught,
+    ):
+        client.generate_json(
+            model="deepseek-v4-flash",
+            prompt="synthetic",
+            response_schema={"type": "object"},
+            max_output_tokens=512,
+        )
+    assert caught.value.error_type == "incomplete"
+    assert caught.value.total_tokens == 522
+    assert caught.value.structured_output_mode == "json_object_plus_local_schema_validation"
