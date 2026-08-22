@@ -22,8 +22,8 @@ from intentbench.schemas import Case, Decision
 from intentbench.taxonomy import load_taxonomy
 
 ROOT = Path(__file__).parents[2]
-PACK_PATH = ROOT / "configs/kir-pilot-v1-annotation-pack.yaml"
-TAXONOMY_PATH = ROOT / "configs/kindred-activity-intents-v1.yaml"
+PACK_PATH = ROOT / "configs/kir-pilot-v2-annotation-pack.yaml"
+TAXONOMY_PATH = ROOT / "configs/kindred-activity-intents-v2.yaml"
 TEMPLATE_PATH = ROOT / "templates/kir-pilot-v1-case.template.json"
 GUIDELINE_PATH = ROOT / "docs/annotation-guideline.md"
 
@@ -32,7 +32,7 @@ def test_annotation_artifacts_are_complete_and_taxonomy_aligned() -> None:
     report = validate_annotation_artifacts(PACK_PATH, TAXONOMY_PATH, TEMPLATE_PATH)
     assert report == {
         "status": "valid",
-        "pack_id": "kir-pilot-annotation-v2",
+        "pack_id": "kir-pilot-annotation-v3",
         "decision_example_count": 36,
         "intent_boundary_count": 8,
         "near_oos_pair_count": 8,

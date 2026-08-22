@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections import Counter, defaultdict
 from collections.abc import Sequence
 from pathlib import Path
@@ -73,8 +74,11 @@ def validate_candidate_cases(cases: Sequence[DraftCase], taxonomy: Taxonomy) -> 
     if len(cases) != EXPECTED_CANDIDATE_COUNT:
         raise CandidateDatasetError("IE1.2 candidate set must contain exactly 160 cases")
 
-    expected_ids = [f"draft-kir-pilot-{index:04d}" for index in range(1, 161)]
     actual_ids = [case.id for case in cases]
+    id_match = re.fullmatch(r"(draft-kir-pilot(?:-v[0-9]+)?)-0001", actual_ids[0])
+    if id_match is None:
+        raise CandidateDatasetError("candidate IDs use an unsupported dataset prefix")
+    expected_ids = [f"{id_match.group(1)}-{index:04d}" for index in range(1, 161)]
     if actual_ids != expected_ids:
         raise CandidateDatasetError("candidate IDs must be unique, contiguous, and ordered")
 

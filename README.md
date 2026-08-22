@@ -5,12 +5,16 @@ Kindred Intent Bench 是一个离线优先的 open-set intent recognition Workbe
 `oos / no_intent / ambiguous`。
 
 它不替 Kindred 决定“应该想做什么”，也不把自主选择分布是否均匀当作正确性指标。当前已完成 IE0 工程
-合同和 IE1.1 标注合同。IE1.2 已建立 160-case 人工复核候选队列，但它仍是 pending draft，不是正式
-Gold；仓库没有运行 frozen test，也没有接入 Kindred 生产路径。
+合同和 IE1.1 标注合同。IE1.2 已从 Kindred 实际运行环境捕获 Activity/Action grounding，并完成 taxonomy
+v2 与 160 条候选校准；158 条原人工标签按完全相同 context 迁移，2 条新增边界样本也已完成人工补审。
+32 条 grounded 仲裁结果已通过 hash gate 导入；3 条 policy impact 已用 routing + open-intent 双通道解决。
+160 条带 reviewer/adjudicator provenance 的 Gold 已完成 IE1.3 group-safe split：48 条 dev、112 条 frozen
+test，dataset card、split manifest、SHA-256 与 24 条 semantic-audit IDs 均已冻结。仓库尚未运行 frozen
+test，experiment lock 仍为 draft，也没有接入 Kindred 生产路径。
 
 ## IE0 已实现
 
-- 8-intent 版本化 taxonomy：包括 `play_xiaohongshu` 等小众 Activity；
+- 绑定真实 Kindred 运行环境的 8-intent 版本化 taxonomy：包括 `play_xiaohongshu` 等小众 Activity；
 - Pydantic Gold / Prediction / RunManifest 合同与四类输出真值表；
 - 完整 Gold universe evaluator：missing、Provider failure、schema invalid 均计错，duplicate/extra 使 run 无效；
 - HEM、固定标签 Macro-F1、OOS/no-intent/ambiguous、near-OOS、统一 slice metrics 与成对 context 指标；
@@ -30,15 +34,28 @@ Gold；仓库没有运行 frozen test，也没有接入 Kindred 生产路径。
 
 这些资产只用于指导 IE1.2 人工编写与复核，不是正式数据集，也没有 case/split 身份。
 
-## IE1.2 候选队列
+## IE1 Gold 数据
 
-[候选数据卡](data/kir-pilot-v1/candidate-card.md)和 `candidates.jsonl` 已提供完整的 160 条审阅队列：
+[候选数据卡](data/kir-pilot-v2/candidate-card.md)和 `candidates.jsonl` 已提供 grounding 校准后的 160 条审阅队列：
 `in_scope=80 / oos=32 / no_intent=24 / ambiguous=24`，并满足 8-intent、near/far OOS、24组
 context control/distractor 对照、显式 background perturbation、hard-negative竞争intent和横切标签精确覆盖。
 
-这些记录统一使用 `llm_assisted_pending_human_review + draft`，不含 split 或生成 cluster ID，不能通过正式
-`Case` schema。只有人工逐条确认、修订 provenance 后，才允许进入 IE1.3 materialization、group split 和
-freeze。
+原始候选仍使用 `llm_assisted_pending_human_review + draft` 并作为不可变审计输入。人工复核后的
+[adjudicated pre-split Gold](data/kir-pilot-v2/adjudicated/cases.jsonl) 也是不可变上游证据；IE1.3 从它
+确定性生成正式 [dev](data/kir-pilot-v2/dev.jsonl) 与 [frozen test](data/kir-pilot-v2/test.jsonl)。共享
+scenario/paraphrase/contrast 关系的 Case 不跨 split，`bootstrap_cluster_id=split_group_id`。
+
+[dataset card](data/kir-pilot-v2/dataset-card.md) 披露了合成、单标注者和 non-blind test 限制；
+[split manifest](data/kir-pilot-v2/split-manifest.json) 记录 35/77 个 dev/test group、精确主标签配额、诊断
+切片分布及 24 条 semantic-preservation audit IDs；[freeze manifest](data/kir-pilot-v2/freeze-manifest.json)
+绑定 taxonomy/dev/test/split hashes。四个 required test domain 的 cluster 数为 77/43/11/11，均满足下限 8。
+
+IE1.2 review workspace 由 candidate/taxonomy hash、稳定乱序响应表和 complete gate 约束。v1 已完成的 158 条
+完全相同 context 保留原 reviewer/timestamp 并写入显式 migration receipt；2 条新 context 不能暗中继承标签。
+补审已通过完整工作簿和 hash gate 导入，入口与仲裁说明见
+[v2 review workspace](data/kir-pilot-v2/reviews/README.md)。Grounding 还纠正了旧设计把公开发布误判为 OOS
+的问题。仲裁导入证据与 3 条已用双通道解决的合同影响见
+[policy-impact audit](data/kir-pilot-v2/reviews/initial/adjudication/policy-impact.md)。
 
 预注册采用三 Provider、七运行产物矩阵：`gemini-3.6-flash` 是 primary，完整运行
 `B2a/B2b/B3`，且是唯一全局 verdict authority；`deepseek-v4-flash` 是低成本弱模型复现，
@@ -55,13 +72,16 @@ uv run ruff format --check .
 uv run ruff check .
 uv run mypy src
 uv run pytest
-uv run intentbench taxonomy validate configs/kindred-activity-intents-v1.yaml
+uv run intentbench grounding validate
+uv run intentbench taxonomy validate configs/kindred-activity-intents-v2.yaml
 uv run intentbench annotations validate
 uv run intentbench dataset candidates validate
+uv run intentbench dataset reviews status
+uv run intentbench dataset gold split-freeze
 ```
 
-以上命令不访问 LLM/embedding Provider。正式 test runner 后续必须通过双冻结 guard；当前 experiment
-仍是 `draft`，这是 IE0 的预期状态。
+以上命令不访问 LLM/embedding Provider；最后一条在已冻结仓库上执行幂等再验证并返回 `unchanged`。正式
+test runner 后续必须通过双冻结 guard；dataset 已 frozen，但 experiment 仍是 `draft`，因此 test 仍不可运行。
 
 ## 显式 Provider smoke
 

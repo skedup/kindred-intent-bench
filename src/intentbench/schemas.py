@@ -114,6 +114,67 @@ class ContextPerturbation(StrictModel):
         return self
 
 
+class OpenIntentCandidate(StrictModel):
+    """Non-routing signal for an activity idea the frozen catalog cannot safely execute."""
+
+    name: str = Field(pattern=r"^[a-z][a-z0-9_]{2,63}$")
+    evidence_quote: str = Field(min_length=1)
+    horizon: Horizon
+    catalog_status: Literal["not_in_catalog", "underspecified_for_catalog"]
+    routing_effect: Literal["none"] = "none"
+    observability: Literal["log_candidate"] = "log_candidate"
+
+
+RoutingLabelSource = Literal[
+    "blind_human_review",
+    "adjudicated_human",
+    "adjudicated_draft",
+    "policy_dual_channel_draft",
+]
+
+
+class ReviewProvenance(StrictModel):
+    """Per-case lineage from the label-blind response through optional adjudication."""
+
+    review_item_id: str = Field(pattern=r"^review-(initial|blind-retest)-[0-9]{4}$")
+    reviewer_id: str = Field(min_length=1)
+    reviewed_at: datetime
+    routing_label_source: RoutingLabelSource
+    supporting_fields_source: Literal["llm_assisted_draft"] = "llm_assisted_draft"
+    adjudication_packet_item_id: str | None = Field(
+        default=None, pattern=r"^adjudication-[0-9]{4}$"
+    )
+    adjudication_action: str | None = Field(default=None, min_length=1)
+    adjudicator_id: str | None = Field(default=None, min_length=1)
+    adjudicated_at: datetime | None = None
+    policy_resolution_id: str | None = Field(default=None, pattern=r"^policy-[0-9]{4}$")
+
+    @model_validator(mode="after")
+    def validate_lineage(self) -> ReviewProvenance:
+        if self.reviewed_at.tzinfo is None:
+            raise ValueError("reviewed_at must include a timezone")
+        adjudication_fields = (
+            self.adjudication_packet_item_id,
+            self.adjudication_action,
+            self.adjudicator_id,
+            self.adjudicated_at,
+        )
+        if any(value is not None for value in adjudication_fields):
+            if any(value is None for value in adjudication_fields):
+                raise ValueError("adjudication provenance fields must be present together")
+            assert self.adjudicated_at is not None
+            if self.adjudicated_at.tzinfo is None:
+                raise ValueError("adjudicated_at must include a timezone")
+        elif self.routing_label_source != "blind_human_review":
+            raise ValueError("non-review routing sources require adjudication provenance")
+        if self.routing_label_source == "policy_dual_channel_draft":
+            if self.policy_resolution_id is None:
+                raise ValueError("dual-channel routing requires policy_resolution_id")
+        elif self.policy_resolution_id is not None:
+            raise ValueError("only dual-channel routing may carry policy_resolution_id")
+        return self
+
+
 class Gold(StrictModel):
     decision: Decision
     target_intent: str | None
@@ -204,6 +265,8 @@ class Case(StrictModel):
     paraphrase_cluster_id: str = Field(min_length=1)
     split_group_id: str | None = None
     bootstrap_cluster_id: str | None = None
+    open_intent_candidate: OpenIntentCandidate | None = None
+    review_provenance: ReviewProvenance | None = None
     source: Literal["human_authored", "llm_assisted_human_reviewed", "synthetic_fixture"]
     annotator_id: str = Field(min_length=1)
     adjudication_status: Literal["draft", "reviewed", "adjudicated"]
@@ -230,6 +293,12 @@ class Case(StrictModel):
             raise ValueError("split_group_id and bootstrap_cluster_id must be assigned together")
         if self.split_group_id is not None and self.bootstrap_cluster_id != self.split_group_id:
             raise ValueError("bootstrap_cluster_id must equal split_group_id")
+        if self.source == "llm_assisted_human_reviewed" and self.review_provenance is None:
+            raise ValueError("LLM-assisted reviewed cases require review_provenance")
+        if self.open_intent_candidate is not None:
+            open_quote = normalize_evidence_text(self.open_intent_candidate.evidence_quote)
+            if not any(open_quote in normalize_evidence_text(carrier) for carrier in carriers):
+                raise ValueError("open_intent_candidate.evidence_quote must be a context substring")
         return self
 
 

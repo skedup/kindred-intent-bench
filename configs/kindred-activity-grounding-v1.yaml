@@ -1,0 +1,300 @@
+schema_version: 1
+grounding_version: kindred-activity-grounding-v1
+captured_at: '2026-08-21T17:44:51.921289Z'
+authority:
+  authority_kind: installed_derived_runtime
+  environment: mac-local-running-kindred
+  distribution_name: kindred
+  distribution_version: 0.3.1
+  internal_source_commit: 0d6f9aeddfc18bf001c99f4dc3f6c2d2ad8225e7
+  private_overlay_sha256: 71604b8d131ef115c513faeb249143bd176a2a87a567f48f6fa472a359d8d641
+  activity_loader: kindred.activity.skill.list_registered_activities
+  action_loader: kindred.activity.action.list_registered_actions
+activities:
+- name: create_picture
+  description: 脑海里浮现出一幅具体画面，想把它画下来
+  uses:
+  - draw
+  terminal_when: '图片已经生成，或构思散去、能力暂时不可用而决定收住时，就 end_activity。
+
+    '
+  duration_hint: short
+  produces: optional
+  manifest_path: life_assets/activities/create_picture/manifest.yaml
+  manifest_sha256: 2dde11788d885f3ab7af645f61a28a2a6b52c2fd5eb948d1d2a49a6feb918697
+  skill_path: life_assets/activities/create_picture/SKILL.md
+  skill_sha256: 9f126a9a78574f913a41d5811b5c357f98b8a932f4ff60209abb55f9d18508d2
+- name: dine_out
+  description: 肚子饿了或忽然馋起一口具体的味道，想认真出门吃顿好的；天气影响出行方式，但不默认否决这份兴致
+  uses:
+  - change_outfit
+  - makeup
+  - pack_bag
+  - walk
+  - ride
+  - eat
+  terminal_when: '完成：在 eat 状态下吃满意了、或 hunger 降下来了，end_activity。
+
+    中断：情况变了就不必硬撑——不饿了（hunger 本就低）、累得走不动（energy 见底）、或不想继续了，
+
+    那这顿没吃成也是一种结束，照样 end_activity，settle 里如实说没吃成。不合时宜了，中断它就是对的决定。
+
+    只有没吃够、还想坐会儿，才停在 eat 继续。
+
+    '
+  duration_hint: long
+  produces: likely
+  manifest_path: life_assets/activities/dine_out/manifest.yaml
+  manifest_sha256: 8751a42ca6f1736cd62b1da6a394085bdd715f36402ae6907e76ee808433a0aa
+  skill_path: life_assets/activities/dine_out/SKILL.md
+  skill_sha256: 59190144f2a1af3e66d6034868afd5ae952f21cf69ef568ff7b068dac7ede1b0
+- name: eat_at_home
+  description: 想回家或留在家里安稳吃一顿，让已经浮上来的胃口或馋意真正落下来
+  uses:
+  - walk
+  - ride
+  - prepare_food
+  - eat
+  terminal_when: '在 eat 状态下，已经吃够了或 hunger 明显降下来，就 end_activity。
+
+    任意阶段若发现没有可用食物、无法准备，或此刻不再想吃，也可以如实 end_activity，并说明这顿没有吃成。
+
+    已经在家就跳过 walk；有现成食物时直接进入 eat；没有准备好时先 prepare_food，准备好后转进 eat。
+
+    还饿、也还愿意继续吃，就停在 eat。
+
+    '
+  duration_hint: short
+  produces: optional
+  manifest_path: life_assets/activities/eat_at_home/manifest.yaml
+  manifest_sha256: 49a7d58f1f21d9f86aecbdbed71efb8d80a37397b519e7c95e3bc69794326a9a
+  skill_path: life_assets/activities/eat_at_home/SKILL.md
+  skill_sha256: 6907a7860c878c2f94a26b8cd874350c19709f561b23267a263a9c793187046a
+- name: play_xiaohongshu
+  description: 想打开小红书看看外面的生活，或把此刻一件具体经历整理成图文分享
+  uses:
+  - use_xhs
+  - compose
+  - draw
+  - publish_xhs
+  terminal_when: '已经看到了足够的内容、有一个感受可以带回来或一次克制互动已经尝试过；已经明确发布成功；
+
+    草稿/图片形成后决定暂时保留；发现自己只是被信息流拖着走，或能力不可用时，就 end_activity 收住。
+
+    '
+  duration_hint: short
+  produces: optional
+  manifest_path: life_assets/activities/play_xiaohongshu/manifest.yaml
+  manifest_sha256: 63d2b7fc0baf9de8bd9a712937804d15ba8ca829b224cfcafbc8a6edea22caeb
+  skill_path: life_assets/activities/play_xiaohongshu/SKILL.md
+  skill_sha256: 49a2f8c10370987e679c58da7289667310e430d4f6b6b31e2d86e27bf4e7c517
+- name: reach_out_to_user
+  description: 对方不在身边、彼此没有刚聊过，而生活里正有一件具体的事，很自然地想告诉 ta
+  uses:
+  - compose
+  - send
+  terminal_when: '话发出去了（send 完成），这个意图就完成了，可以 end_activity。
+
+    明确决定不发、或想了又咽回去时，也可以 end_activity 把这次开口收住。
+
+    尚未决定时可以继续 advance_activity，让 compose 保持未决；犹豫本身不等于失败或已经发送。
+
+    '
+  duration_hint: short
+  produces: optional
+  manifest_path: life_assets/activities/reach_out_to_user/manifest.yaml
+  manifest_sha256: e866157d3d8a5f2d7a28e483b27cc89cb87737fa2bec524806afd779a51ab575
+  skill_path: life_assets/activities/reach_out_to_user/SKILL.md
+  skill_sha256: 5c7e6ba91e678d6602585a63448969972833659a8e626d0c9565fbf409447926
+- name: rest
+  description: 身体明确需要休息或睡一觉，想去能安心躺下的地方恢复；重点是睡下，不只是回家
+  uses:
+  - walk
+  - ride
+  - change_outfit
+  - remove_makeup
+  - sleep
+  terminal_when: '在 sleep 状态下，energy 基本回满、疲惫消退了，这次休息就完成了，可以 end_activity。
+
+    任意阶段若改变主意、不再想睡，或当前条件无法继续，也可以如实 end_activity，不要虚构移动、换衣或睡眠。
+
+    还没缓过来就继续睡（停在 sleep）。
+
+    '
+  duration_hint: long
+  produces: optional
+  manifest_path: life_assets/activities/rest/manifest.yaml
+  manifest_sha256: a9fe23cea1dc4fe6713effeeb87e9dd7cde1c7e785a266aeb7f68ad9f066ff88
+  skill_path: life_assets/activities/rest/SKILL.md
+  skill_sha256: 5f04f87209a2c070f1bd87cf021d00e1c032a47f4492ef709d109d9aed0d3fff
+- name: take_a_walk
+  description: 在室内待久了、眼前有些单调，想去附近走走，换一点新鲜空气；天气影响出行方式，但不默认否决这件事
+  uses:
+  - change_outfit
+  - makeup
+  - pack_bag
+  - walk
+  terminal_when: '已经真实到达选择的落点，并且走够、身体松下来或体力不再适合继续时，就 end_activity。
+
+    任意阶段若查不到真实落点、天气明确危险、现实不可行或临时不想出门，也可以如实 end_activity，
+
+    不要虚构移动或到达。
+
+    '
+  duration_hint: short
+  produces: optional
+  manifest_path: life_assets/activities/take_a_walk/manifest.yaml
+  manifest_sha256: ccbfd49067a78023e00dc2fe25ef66f7308976f74e2a7f60d3d1cd9fa9d10f28
+  skill_path: life_assets/activities/take_a_walk/SKILL.md
+  skill_sha256: afef1380b90dd2e776f9e7955fc5395c05f010c61b33314db21ef1868e263a56
+- name: visit_cultural_place
+  description: 想接触更完整、更有质感的新鲜输入时，去附近的展馆、博物馆、图书馆或书店慢慢看看；天气影响出行方式，但不默认否决这件事
+  uses:
+  - change_outfit
+  - makeup
+  - pack_bag
+  - walk
+  - ride
+  - explore_place
+  terminal_when: '已经真实到达，并在 explore_place 状态下看够了、注意力已经饱和或有一个感受可以带回来时，就 end_activity。
+
+    任意阶段若查不到合适地点、场所不适合停留、临时失去兴趣或无法继续，也可以如实 end_activity，
+
+    不要虚构移动、到达或看见的内容。
+
+    '
+  duration_hint: medium
+  produces: optional
+  manifest_path: life_assets/activities/visit_cultural_place/manifest.yaml
+  manifest_sha256: 6b26663bab62921aff37c85dc57472394b482d6b57cb3466405ec7ccdf6fd251
+  skill_path: life_assets/activities/visit_cultural_place/SKILL.md
+  skill_sha256: fc83538db6c5b2cdbe5c5be126c021b20639bd45b365d49684cba341cce8cb68
+actions:
+- name: change_outfit
+  description: 完整审视包括内衣裤、鞋和配饰的穿着，并按自己的选择真正换好、保留或不穿
+  applies_when: 想改变 top/bottom/outer/bra/panties/socks/shoes/accessory；标量槽位更换写 selector、保留省略、不穿写
+    null；accessory 更换写 selector 数组、保留省略、不戴写 []；原样保留时跳过
+  capabilities:
+  - inventory
+  manifest_path: life_assets/actions/change_outfit/manifest.yaml
+  manifest_sha256: bed6444df2446a446e0a926c55660b9deec3db2ce349b1cf68c4857a2a6196f6
+  skill_path: life_assets/actions/change_outfit/SKILL.md
+  skill_sha256: c6db56b624fe47258434a41dc86b8704c813299c5a865839af14c1d82e34a002
+- name: compose
+  description: 心里有句话或一段文字，正想着怎么写出来
+  applies_when: 任何时候都能开始 —— 酝酿一句话不需要前提
+  capabilities:
+  - compose
+  manifest_path: life_assets/actions/compose/manifest.yaml
+  manifest_sha256: a5dedec3be6d2a5ec2bc03235a4eb117d274652454354e3fb2f7a8e9b45ced5a
+  skill_path: life_assets/actions/compose/SKILL.md
+  skill_sha256: b9fa5f242bc524521a1160af3a7968997b7f2473d4d4608ddb0e643fdc2d7173
+- name: draw
+  description: 把脑海里已经成形的画面慢慢画出来
+  applies_when: 脑海里已有一幅具体画面，确实想把它变成作品
+  capabilities:
+  - draw
+  manifest_path: life_assets/actions/draw/manifest.yaml
+  manifest_sha256: bfefe197854924d30e46bc4be29f16c367d28aa10cf3b637ae88ee923a128fd8
+  skill_path: life_assets/actions/draw/SKILL.md
+  skill_sha256: 5cc908f1fd2939937f096c55e5beb861ca64b95c4d02939df19c87efc203bfb0
+- name: eat
+  description: 坐下来吃东西
+  applies_when: 需要在有食物的地方 —— 餐厅 / 家里厨房 / 带了吃的
+  capabilities: []
+  manifest_path: life_assets/actions/eat/manifest.yaml
+  manifest_sha256: 92e3ed92887c41b5bf4db6e69ef1a70c3ba641f775d5d59e6fd3ea55e4250dc0
+  skill_path: life_assets/actions/eat/SKILL.md
+  skill_sha256: 9860d6648bfc28e9d08decd3f634e20f470a4589bd4030e1cd60650a8a9a1134
+- name: explore_place
+  description: 在已经抵达的地方慢慢观看、阅读或走动，留意空间与其中的细节
+  applies_when: 已经真实到达一个适合停留、观看或阅读的地点
+  capabilities: []
+  manifest_path: life_assets/actions/explore_place/manifest.yaml
+  manifest_sha256: a1f3d8362ba75d256fc3446070c8c2e1d1220d7e78113e3e695e6f2496471684
+  skill_path: life_assets/actions/explore_place/SKILL.md
+  skill_sha256: 392b0fa91be152a1cfd401ee72ef6d51cd3f82470280fdee4f81890c22f41f47
+- name: makeup
+  description: 对着镜子上妆或改变当前妆容，并留下具体的妆后状态
+  applies_when: 能拿到化妆工具，而且确实要把妆容改变为一个非空的具体状态；维持原样时跳过
+  capabilities: []
+  manifest_path: life_assets/actions/makeup/manifest.yaml
+  manifest_sha256: 435b99a6649d76500df589a8b306c9ede1a3760f4d506d9ecb75549ff81297a4
+  skill_path: life_assets/actions/makeup/SKILL.md
+  skill_sha256: 3374caa5d1ed010f9ddb4fb7369d549674e16dab4861fb431f9a1bf4f5c58520
+- name: pack_bag
+  description: 选择随身包并真正整理好这次需要或只是想带着的物品
+  applies_when: 确实想改变随身包或包内物品；实用、安心、审美、纪念或单纯喜欢都成立，现状合心意时跳过
+  capabilities:
+  - inventory
+  manifest_path: life_assets/actions/pack_bag/manifest.yaml
+  manifest_sha256: 5de2e0ffceb3d83cd7293b39151c9e3ee12b8395d00217a2df0f5d18357ab30b
+  skill_path: life_assets/actions/pack_bag/SKILL.md
+  skill_sha256: 59637d20d16ddf1ebecc25f95baa062d0a14ae9edbadd0b18b4011d673da2328
+- name: prepare_food
+  description: 在家里把已有食材或食物整理、加热或做成可以吃的一顿
+  applies_when: 人在能准备食物的地方，手边确实有可用的食材或食物，而且这一顿还没有准备好
+  capabilities: []
+  manifest_path: life_assets/actions/prepare_food/manifest.yaml
+  manifest_sha256: b967dd752dbc5f4123eccbdd4ce2edae1372e6d87cbbafdd94df00dfd483cd03
+  skill_path: life_assets/actions/prepare_food/SKILL.md
+  skill_sha256: cb3bbf7cfbcbee88b3306373e44b34e5218bc6e09fa3d49180297ded0740158a
+- name: publish_xhs
+  description: 把已经完成的图文正式发布到自己的小红书主页
+  applies_when: 当前 Activity run 已有一份 committed 小红书文字 Artifact 和至少一张 committed 图片，并且确实决定公开
+  capabilities:
+  - xiaohongshu
+  manifest_path: life_assets/actions/publish_xhs/manifest.yaml
+  manifest_sha256: 7ec02c1e6310bace4ead62ba547f8c84e989a71725eb59c0c488a0e08a23aa2b
+  skill_path: life_assets/actions/publish_xhs/SKILL.md
+  skill_sha256: 8c86dceb4b3ba4a34e8f0868ec03b62e6954bef2989b2e848bb728307fbe7cd7
+- name: remove_makeup
+  description: 卸掉当前妆容，让脸和身体放松下来
+  applies_when: 当前确实有妆，需要卸妆；无妆时自然跳过
+  capabilities: []
+  manifest_path: life_assets/actions/remove_makeup/manifest.yaml
+  manifest_sha256: 1d25718025f164ef76ea0991ce1d582f3acf97f5936f400917e0094f8781e3bd
+  skill_path: life_assets/actions/remove_makeup/SKILL.md
+  skill_sha256: ae685f9c4be43ef3bb17a2c73e35f515334a4a4af9346268959202676e395bc8
+- name: ride
+  description: 乘车前往目的地 —— 由车辆承载的移动
+  applies_when: 有明确目的地，而且此刻选择乘坐汽车、出租车、公交或地铁前往
+  capabilities: []
+  manifest_path: life_assets/actions/ride/manifest.yaml
+  manifest_sha256: ebfa0e45a3c5d1efb97b52c40e851db306d1ca5a5029f8cc66740a114e240997
+  skill_path: life_assets/actions/ride/SKILL.md
+  skill_sha256: 2839eecef002c54b647f68aced28d9d0024370d31cc89827bb43a9fffbee681b
+- name: send
+  description: 把话发出去，主动联系 ta
+  applies_when: 有想说的话、且决定要发 —— 配合 send_to_user 工具调用
+  capabilities:
+  - send
+  manifest_path: life_assets/actions/send/manifest.yaml
+  manifest_sha256: e851d6411733ec37d45048f3a50bba93d62503645cd8f21b813f127e93edfddf
+  skill_path: life_assets/actions/send/SKILL.md
+  skill_sha256: 16e89f8377e1b8bb32a5d06ea9c9c8a79bcea3fd433443a09a0b6e806302f22c
+- name: sleep
+  description: 躺下，让身体和精神都缓过来
+  applies_when: 需要能躺下的地方 —— 家里床 / 酒店 / 沙发
+  capabilities: []
+  manifest_path: life_assets/actions/sleep/manifest.yaml
+  manifest_sha256: fb90ca08e5d7c1cbf15f73753ba6623243a56797ea904547ca4f10cfa0c0f1bd
+  skill_path: life_assets/actions/sleep/SKILL.md
+  skill_sha256: 2fe15f05036856ec177b2da0c396dd6cf53a3b7a8c2ac842509d72e2d4839974
+- name: use_xhs
+  description: 打开小红书，浏览、搜索、查看帖子/主页/自己的内容与通知，或做一次低频互动
+  applies_when: 想借小红书看推荐流、搜索内容、查看作者主页、自己的帖子或评论/点赞/关注通知，确认某条内容事实，或对本轮看见的帖子低频互动
+  capabilities:
+  - xiaohongshu
+  manifest_path: life_assets/actions/use_xhs/manifest.yaml
+  manifest_sha256: 83de0c73c4853d9dd98941face623fa0f60b396b41c982eeb106ff254dd8ba9a
+  skill_path: life_assets/actions/use_xhs/SKILL.md
+  skill_sha256: cff2e5fba006ee47824549585c870e52ec099485d0f7ce54b3185c06aba2157b
+- name: walk
+  description: 徒步走向目的地 —— 用双脚完成的移动
+  applies_when: 有明确目的地，而且此刻选择步行前往
+  capabilities: []
+  manifest_path: life_assets/actions/walk/manifest.yaml
+  manifest_sha256: 4c69e17a96ea6339fe01c00408622a3d89a11bbc5f16dde40b5e4b3806c5d1f2
+  skill_path: life_assets/actions/walk/SKILL.md
+  skill_sha256: 1f0bb02d86344ca343c674b3895266aec15c708ff0db0e35f22031f4de3c2c2e

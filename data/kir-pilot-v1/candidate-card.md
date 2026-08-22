@@ -1,6 +1,6 @@
 # KIR Pilot v1 候选数据卡（IE1.2）
 
-> Status: `160 candidates generated / pending human review / not split / not frozen`
+> Status: `160 candidates generated / initial blind review complete / adjudication pending / not split / not frozen`
 >
 > 数据文件：[candidates.jsonl](candidates.jsonl)
 
@@ -71,6 +71,11 @@ uv run python scripts/build_ie12_candidates.py
 uv run intentbench dataset candidates validate
 ```
 
+人工独立标签通过 [reviews](reviews/README.md) 工作区进行。盲审包不含候选草稿标签、tags、关系 ID 或原始
+候选 ID，顺序也不沿用 `draft-kir-pilot-*` 编号；candidate/taxonomy hash 漂移会使 workspace 校验失败。
+Initial pass 已完成 160/160 并保留工作簿导入回执，但 17 条受控标签分歧、15 条一致抽查及 semantic tags/
+关系复核尚未完成，因此候选 provenance 与 `adjudication_status=draft` 保持不变。
+
 ## 人工复核要求
 
 复核者必须逐条执行以下动作：
@@ -86,5 +91,6 @@ uv run intentbench dataset candidates validate
 7. 排除或修订任何无法形成唯一可审计 Gold 的候选，并补齐相同分层位置；
 8. 全部完成后才允许 materialize 为正式 `Case`，再进入 IE1.3 group split。
 
-若只有仓库维护者一人复核，仍需至少间隔三天盲重标，并在最终 dataset card 中声明这是
-intra-annotator test-retest，而不是独立双标或 blind test。
+当前是单人 initial blind review，不提供独立双标 IAA。草稿已经揭示后，同一 reviewer 的重标至多衡量
+intra-annotator test-retest consistency，不再是独立 blind label；求职版 pilot 可不把它作为当前 gate，但
+必须在最终 dataset card 披露限制。若需要正式 IAA，应增加第二名未见草稿的独立 reviewer。

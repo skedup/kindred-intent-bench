@@ -21,8 +21,8 @@ from intentbench.schemas import Case
 from intentbench.taxonomy import load_taxonomy
 
 ROOT = Path(__file__).parents[2]
-CASES_PATH = ROOT / "data/kir-pilot-v1/candidates.jsonl"
-TAXONOMY_PATH = ROOT / "configs/kindred-activity-intents-v1.yaml"
+CASES_PATH = ROOT / "data/kir-pilot-v2/candidates.jsonl"
+TAXONOMY_PATH = ROOT / "configs/kindred-activity-intents-v2.yaml"
 
 
 def candidate_payloads() -> list[dict[str, object]]:

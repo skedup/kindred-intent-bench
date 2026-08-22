@@ -1,0 +1,163 @@
+schema_version: 1
+audit_id: kir-pilot-v1-grounding-impact-20260822
+status: completed_before_gold_freeze
+source:
+  candidate_artifact_sha256: 5d1c3e85d332a7e067b2a21170d0624f4df57e6cae467b30bbd3f9dd4ad5cc47
+  taxonomy_version: kindred-activity-intents-v1
+  taxonomy_artifact_sha256: a5c0958e7c106c7b6e67fdc8fd3dbf320d464ff209b3bd4f3964d87572676407
+target:
+  candidate_artifact_sha256: 748b625da46e713bebbf59cc5210d2e409834f9e6fcd17880266c4298ba635d7
+  grounding_version: kindred-activity-grounding-v1
+  grounding_artifact_sha256: 463f68ce0d3b5d23c47173e2d93c0e60b49eca35891117d32908927ee8792eb5
+  taxonomy_version: kindred-activity-intents-v2
+  taxonomy_artifact_sha256: fd42196971d47872b236a1f66368b7a186d1a37a10ea03eabec218d5555c6941
+scope:
+  total_candidates_reviewed: 160
+  in_scope_contract_cases_reviewed: 80
+  near_oos_contract_cases_reviewed: 16
+  structural_rejection_cases_reviewed: 64
+summary:
+  draft_labels_keep: 159
+  draft_labels_change: 1
+  near_oos_draft_labels_keep: 15
+  near_oos_draft_labels_change: 1
+  product_policy_required: 0
+  positive_coverage_gaps: 2
+  exact_context_reviews_migrated: 158
+  new_context_reviews_pending: 2
+coverage_gaps:
+  - activity: play_xiaohongshu
+    missing_path: publish_xhs
+    resolution: replace one redundant browse positive with a public-publish positive
+  - activity: play_xiaohongshu
+    missing_path: public_interaction
+    resolution: replace one redundant browse positive with a low-frequency public-interaction positive
+near_oos_findings:
+  - candidate_id: draft-kir-pilot-0081
+    sibling_intent: create_picture
+    grounded_decision: oos
+    grounded_target_intent: null
+    contract_evidence: create_picture only uses draw; draw forms a new work from a concrete mental image
+    source_refs: [life_assets/activities/create_picture/manifest.yaml, life_assets/actions/draw/manifest.yaml]
+    draft_resolution: keep
+    human_resolution: revise_from_in_scope
+  - candidate_id: draft-kir-pilot-0082
+    sibling_intent: create_picture
+    grounded_decision: oos
+    grounded_target_intent: null
+    contract_evidence: editing text and size on an existing poster is not the draw contract for a new work
+    source_refs: [life_assets/activities/create_picture/manifest.yaml, life_assets/actions/draw/SKILL.md]
+    draft_resolution: keep
+    human_resolution: revise_from_in_scope
+  - candidate_id: draft-kir-pilot-0083
+    sibling_intent: dine_out
+    grounded_decision: oos
+    grounded_target_intent: null
+    contract_evidence: dine_out is organized around eating or drinking; the utterance explicitly rejects both
+    source_refs: [life_assets/activities/dine_out/manifest.yaml, life_assets/actions/eat/manifest.yaml]
+    draft_resolution: keep
+    human_resolution: keep
+  - candidate_id: draft-kir-pilot-0084
+    sibling_intent: dine_out
+    grounded_decision: oos
+    grounded_target_intent: null
+    contract_evidence: retrieving an item from a restaurant lacks the dine_out meal goal
+    source_refs: [life_assets/activities/dine_out/manifest.yaml]
+    draft_resolution: keep
+    human_resolution: keep
+  - candidate_id: draft-kir-pilot-0085
+    sibling_intent: eat_at_home
+    grounded_decision: oos
+    grounded_target_intent: null
+    contract_evidence: recipe organization is a concrete current action, but prepare_food and eat are explicitly rejected
+    source_refs: [life_assets/activities/eat_at_home/manifest.yaml, life_assets/actions/prepare_food/manifest.yaml]
+    draft_resolution: keep
+    human_resolution: revise_from_no_intent
+  - candidate_id: draft-kir-pilot-0086
+    sibling_intent: eat_at_home
+    grounded_decision: oos
+    grounded_target_intent: null
+    contract_evidence: menu comparison is a concrete current action; the utterance rejects ordering and eating
+    source_refs: [life_assets/activities/eat_at_home/manifest.yaml, life_assets/actions/eat/manifest.yaml]
+    draft_resolution: keep
+    human_resolution: revise_from_ambiguous
+  - candidate_id: draft-kir-pilot-0087
+    sibling_intent: play_xiaohongshu
+    grounded_decision: in_scope
+    grounded_target_intent: play_xiaohongshu
+    contract_evidence: play_xiaohongshu directly uses compose, draw and publish_xhs for a public post
+    source_refs: [life_assets/activities/play_xiaohongshu/manifest.yaml, life_assets/actions/publish_xhs/manifest.yaml]
+    draft_resolution: revise_from_oos_and_remove_near_oos
+    human_resolution: keep
+  - candidate_id: draft-kir-pilot-0088
+    sibling_intent: play_xiaohongshu
+    grounded_decision: oos
+    grounded_target_intent: null
+    contract_evidence: use_xhs supports public content and notifications but explicitly excludes private messages
+    source_refs: [life_assets/actions/use_xhs/SKILL.md]
+    draft_resolution: keep
+    human_resolution: revise_from_in_scope
+  - candidate_id: draft-kir-pilot-0089
+    sibling_intent: reach_out_to_user
+    grounded_decision: oos
+    grounded_target_intent: null
+    contract_evidence: reach_out_to_user sends to the current user, not an old classmate
+    source_refs: [life_assets/activities/reach_out_to_user/manifest.yaml, life_assets/actions/send/SKILL.md]
+    draft_resolution: keep
+    human_resolution: keep
+  - candidate_id: draft-kir-pilot-0090
+    sibling_intent: reach_out_to_user
+    grounded_decision: oos
+    grounded_target_intent: null
+    contract_evidence: the recipient is a third party rather than the current user
+    source_refs: [life_assets/activities/reach_out_to_user/SKILL.md, life_assets/actions/send/SKILL.md]
+    draft_resolution: keep
+    human_resolution: keep
+  - candidate_id: draft-kir-pilot-0091
+    sibling_intent: rest
+    grounded_decision: oos
+    grounded_target_intent: null
+    contract_evidence: rest is recovery through lying down or sleep; bathing is a different concrete activity
+    source_refs: [life_assets/activities/rest/manifest.yaml, life_assets/actions/sleep/manifest.yaml]
+    draft_resolution: keep
+    human_resolution: keep
+  - candidate_id: draft-kir-pilot-0092
+    sibling_intent: rest
+    grounded_decision: oos
+    grounded_target_intent: null
+    contract_evidence: attentive audio listening is the primary action and no rest or sleep intention is expressed
+    source_refs: [life_assets/activities/rest/manifest.yaml, life_assets/actions/sleep/SKILL.md]
+    draft_resolution: keep
+    human_resolution: keep
+  - candidate_id: draft-kir-pilot-0093
+    sibling_intent: take_a_walk
+    grounded_decision: oos
+    grounded_target_intent: null
+    contract_evidence: take_a_walk makes walking itself the experience; cycling is not one of its actions
+    source_refs: [life_assets/activities/take_a_walk/manifest.yaml, life_assets/activities/take_a_walk/SKILL.md]
+    draft_resolution: keep
+    human_resolution: keep
+  - candidate_id: draft-kir-pilot-0094
+    sibling_intent: take_a_walk
+    grounded_decision: oos
+    grounded_target_intent: null
+    contract_evidence: the registered action is walking to a destination, not running
+    source_refs: [life_assets/activities/take_a_walk/manifest.yaml, life_assets/actions/walk/manifest.yaml]
+    draft_resolution: keep
+    human_resolution: revise_from_in_scope
+  - candidate_id: draft-kir-pilot-0095
+    sibling_intent: visit_cultural_place
+    grounded_decision: oos
+    grounded_target_intent: null
+    contract_evidence: the Activity requires reaching and exploring a real cultural place; an online exhibition stays at home
+    source_refs: [life_assets/activities/visit_cultural_place/manifest.yaml, life_assets/actions/explore_place/manifest.yaml]
+    draft_resolution: keep
+    human_resolution: keep
+  - candidate_id: draft-kir-pilot-0096
+    sibling_intent: visit_cultural_place
+    grounded_decision: oos
+    grounded_target_intent: null
+    contract_evidence: pickup at the doorway does not enter explore_place or pursue a cultural experience
+    source_refs: [life_assets/activities/visit_cultural_place/manifest.yaml, life_assets/actions/explore_place/SKILL.md]
+    draft_resolution: keep
+    human_resolution: keep

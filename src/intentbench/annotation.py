@@ -15,6 +15,8 @@ from intentbench.schemas import (
     ContextPerturbation,
     Decision,
     Gold,
+    OpenIntentCandidate,
+    ReviewProvenance,
     StrictModel,
     normalize_evidence_text,
     validate_diagnostic_tag_contract,
@@ -373,6 +375,31 @@ class DraftCase(StrictModel):
             hard_negative_against=self.hard_negative_against,
             context_perturbation=self.context_perturbation,
         )
+        return self
+
+
+class AdjudicatedCase(DraftCase):
+    """Human-reviewed, pre-split Gold that is ready for IE1.3 grouping."""
+
+    open_intent_candidate: OpenIntentCandidate | None = None
+    review_provenance: ReviewProvenance
+    source: Literal["llm_assisted_human_reviewed"]
+    adjudication_status: Literal["adjudicated"]
+
+    @model_validator(mode="after")
+    def validate_adjudicated_contract(self) -> AdjudicatedCase:
+        candidate = self.open_intent_candidate
+        uses_dual_channel = (
+            self.review_provenance.routing_label_source == "policy_dual_channel_draft"
+        )
+        if uses_dual_channel != (candidate is not None):
+            raise ValueError(
+                "policy dual-channel routing and open_intent_candidate must be present together"
+            )
+        if candidate is not None and not _evidence_is_in_context(
+            self.context, candidate.evidence_quote
+        ):
+            raise ValueError("open-intent evidence must be a contiguous context substring")
         return self
 
 

@@ -2,10 +2,13 @@
 
 > Status: `approved_for_ie1_authoring / not a frozen dataset`
 >
-> 适用版本：`kir-pilot-v1` 数据设计、`kindred-activity-intents-v1` taxonomy
+> 适用版本：`kir-pilot-v2` 数据设计、`kindred-activity-intents-v2` taxonomy
 >
-> 机器可校验示例：`kir-pilot-annotation-v2`
-> [kir-pilot-v1-annotation-pack.yaml](../configs/kir-pilot-v1-annotation-pack.yaml)
+> 机器可校验示例：`kir-pilot-annotation-v3`
+> [kir-pilot-v2-annotation-pack.yaml](../configs/kir-pilot-v2-annotation-pack.yaml)
+>
+> Activity 边界绑定 [kindred-activity-grounding-v1.yaml](../configs/kindred-activity-grounding-v1.yaml)；
+> 先查运行时 Activity/Action 合同，只有合同缺失或冲突才升级产品策略。
 >
 > 本规范和示例包不是 160 条正式 Gold，不包含 test split，也不授权生成 prediction 或调用 Provider。
 
@@ -71,7 +74,7 @@ validator 自动执行。`oos` 最终仍由人依据输入 evidence 和冻结 ta
 |---|---|---|---|---|
 | `guide-oos-positive-01` | 正例 | 打开音乐安静听一会儿 | `oos` | 具体动作不在目录 |
 | `guide-oos-positive-02` | 正例 | 骑自行车沿湖转一圈 | `oos` | 骑行与散步相邻，但不是步行 |
-| `guide-oos-positive-03` | 正例 | 把照片发成公开帖子 | `oos` | 发布不是浏览，目录没有发布 Activity |
+| `guide-oos-positive-03` | 正例 | 打开小红书私信查看照片 | `oos` | 运行时合同明确排除私信 |
 | `guide-oos-negative-01` | 反例 | 下楼散散步 | `in_scope/take_a_walk` | 已有完整承接者 |
 | `guide-oos-negative-02` | 反例 | 还没有具体想做的事 | `no_intent` | 不存在目录外的具体行动 |
 | `guide-oos-negative-03` | 反例 | 想做轻松的事但没决定是什么 | `ambiguous` | 有倾向但不具体 |
@@ -117,7 +120,7 @@ validator 自动执行。`oos` 最终仍由人依据输入 evidence 和冻结 ta
 | `create_picture` | 画雨夜街景；把灵感做成新插画 | 浏览摄影作品→`play_xiaohongshu`；裁剪已有照片→`oos` | 必须创作新的视觉作品 |
 | `dine_out` | 去餐馆吃晚饭；找咖啡馆喝东西 | 在家点外卖→`eat_at_home`；只下楼走走→`take_a_walk` | 离开住处，以餐饮场所用餐为主要目的 |
 | `eat_at_home` | 在厨房煮面；留在家点外卖 | 去小馆吃面→`dine_out`；只有饥饿事实→`no_intent` | 在当前住处准备、订购或享用食物 |
-| `play_xiaohongshu` | 刷小红书；无品牌地浏览他人日常 | 自己画新图→`create_picture`；发布照片→`oos` | 主要行为是浏览他人公开生活方式内容 |
+| `play_xiaohongshu` | 浏览/搜索公开帖子；公开互动；创作并发布公开图文 | 自己只画新图→`create_picture`；查看或发送私信→`oos` | 公开内容消费、互动与发布均由运行时 Activity 承接，私信除外 |
 | `reach_out_to_user` | 给当前用户发消息；给当前用户写晚安 | 想念但不打扰→`no_intent`；浏览陌生人近况→`play_xiaohongshu` | 联系对象必须是当前用户 |
 | `rest` | 闭眼睡一会；靠着放松十分钟 | 只有疲惫事实→`no_intent`；在家吃东西→`eat_at_home` | 必须主动选择暂停、睡眠或安静放松 |
 | `take_a_walk` | 沿河步行；下楼散步透气 | 走去餐馆→`dine_out`；步行去博物馆→`visit_cultural_place` | 步行本身是目的，没有更主要的目的地任务 |
@@ -140,7 +143,7 @@ near-OOS 是“已经具体，但只差一个决定性语义条件就会命中�
 | `near-oos-create-picture-edit` | `create_picture` | 编辑已有照片 | 创作新插画 | 编辑既有图像 vs 新视觉创作 |
 | `near-oos-dine-out-live-music` | `dine_out` | 去酒吧只听乐队、不吃喝 | 去咖啡馆喝咖啡 | 非餐饮目的 vs 餐饮目的 |
 | `near-oos-eat-home-kitchen-task` | `eat_at_home` | 在家整理食谱、不准备吃 | 在家做晚饭 | 厨房相关任务 vs 实际准备/享用食物 |
-| `near-oos-xhs-publish` | `play_xiaohongshu` | 发布自己的公开帖子 | 浏览他人的公开帖子 | 发布 vs 浏览 |
+| `near-oos-xhs-private-message` | `play_xiaohongshu` | 查看小红书私信照片 | 查看博主公开照片 | 私信内容 vs 公开内容 |
 | `near-oos-reach-user-friend` | `reach_out_to_user` | 给老朋友发消息 | 给当前用户发消息 | 第三方 vs 当前用户 |
 | `near-oos-rest-bath` | `rest` | 洗热水澡放松 | 什么也不做、靠着休息 | 具体目录外活动 vs 暂停行动 |
 | `near-oos-walk-cycle` | `take_a_walk` | 沿湖骑车 | 沿湖步行 | 骑行 vs 步行 |
@@ -176,8 +179,9 @@ far-OOS 则与现有 intent 没有需要特别防止的近邻混淆，例如整�
 
 ### 5.3 Brandless XHS（`brandless_xhs`）
 
-- 不要求出现“小红书”品牌名；“浏览他人公开生活/穿搭/日常分享”可标 `play_xiaohongshu`。
-- 不能只凭“看看”“图片”“分享”命中：创作新图属于 `create_picture`，发布自己的内容为 `oos`，
+- 不要求出现“小红书”品牌名；浏览/搜索公开生活内容、公开互动、创作并发布公开生活图文可标
+  `play_xiaohongshu`。
+- 不能只凭“看看”“图片”“分享”命中：只创作新图属于 `create_picture`，私信内容为 `oos`，
   主动联系特定对象不属于浏览。
 - 正式 brandless case 的意图证据中不得出现“小红书”，否则不能用于验证语义泛化。
 
@@ -258,6 +262,11 @@ draft（起草并自检） -> reviewed（独立复核一致）
 分歧记录至少包含这些机器字段：`case_id`、`annotator_id`、`proposed_label`、`evidence_quote`、
 `rationale`、`resolution`、`adjudicator_id`。只有一名标注者时，至少间隔 3 天盲重标；这种复核不能冒充
 inter-annotator agreement，必须在 dataset card 披露。未解决分歧一律 `exclude_from_freeze`。
+
+IE1.2 的 initial pass 必须使用 `dataset reviews` 生成的 label-blind workspace：只展示随机 review item ID 与
+context，先锁定 decision、target、evidence 和 slots，再揭示候选 Gold 做 tags、关系 ID 与分歧仲裁。不得在
+initial response 写入前查看一致性报告或模型 prediction。每个 workspace 绑定 candidate/taxonomy hash；hash
+变化后不得沿用旧响应。
 
 机器包使用完整的 `competing_labels = {decision, target_intent}` 记录候选标签，而不是只记录一级 decision：
 这使仲裁既能表达 `oos` 与 `ambiguous` 的拒识分歧，也能表达 `dine_out` 与 `take_a_walk` 这种同为

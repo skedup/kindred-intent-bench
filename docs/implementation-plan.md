@@ -1,8 +1,8 @@
 # Kindred Intent Bench 实施计划
 
-> Status: `IE0 complete / IE1.1 complete / IE1.2 candidates ready, human review pending`
+> Status: `IE0 complete / IE1 complete and dataset frozen / IE2 pending`
 >
-> 日期：2026-08-21
+> 日期：2026-08-22
 >
 > 权威设计：[design.md](design.md)
 
@@ -47,18 +47,23 @@ kindred-intent-bench/
 ├── uv.lock
 ├── README.md
 ├── configs/
-│   ├── kindred-activity-intents-v1.yaml
-│   ├── kir-pilot-v1-annotation-pack.yaml
+│   ├── kindred-activity-grounding-v1.yaml
+│   ├── kindred-activity-intents-v2.yaml
+│   ├── kir-pilot-v2-annotation-pack.yaml
 │   ├── kir-pilot-v1-experiment.yaml
 │   └── provider-readiness.json
 ├── templates/
 │   └── kir-pilot-v1-case.template.json
 ├── data/
-│   └── kir-pilot-v1/
+│   └── kir-pilot-v2/
 │       ├── candidates.jsonl
 │       ├── candidate-card.md
+│       ├── adjudicated/
+│       │   ├── cases.jsonl
+│       │   └── materialization-receipt.json
 │       ├── dev.jsonl
 │       ├── test.jsonl
+│       ├── split-manifest.json
 │       ├── dataset-card.md
 │       ├── freeze-manifest.json
 │       └── SHA256SUMS
@@ -72,6 +77,10 @@ kindred-intent-bench/
 │   ├── schemas.py
 │   ├── taxonomy.py
 │   ├── dataset.py
+│   ├── review.py
+│   ├── materialize.py
+│   ├── split.py
+│   ├── grounding.py
 │   ├── runner.py
 │   ├── evaluator.py
 │   ├── metrics.py
@@ -198,26 +207,45 @@ IE1.1 的 guideline fixtures 使用 `guide-*` ID 且没有 case/split 身份，�
 - [x] 满足 multi-turn、hard-negative、context-distractor/control、hypothesized weak-model probe、brandless XHS、rest/eat confusion
   的精确覆盖。
 - [x] 以共享 schema 固定 DraftCase/Case 的 hard-negative、probe 语义，并用显式 perturbation 校验 context pair；
-- [ ] 人工逐条复核 decision、target、evidence、slots、tags 和关系 ID；
-- [ ] 修订后写入真实 annotator/reviewer provenance，并将同意项从 pending draft materialize 为正式 Case。
+- [x] 建立 hash-bound、稳定乱序、4×40 的 label-blind initial review workspace 与可续跑 CLI；
+- [x] 完成 160/160 initial blind label，并用 schema/hash/context 全量校验后原子回导 ReviewRecord；
+- [x] 将人工标签与 `llm_assisted_draft_label` 的比较明确限定为 dataset QA，而非模型准确率；
+- [x] 从 Mac 实际运行的 Kindred distribution 捕获 8 Activities / 15 Actions 的静态 grounding 快照；
+- [x] 审计全部 160 条候选，确认 159 个草稿分层标签可保留、公开发布应映射到 `play_xiaohongshu`，旧
+  `product_policy_required` 七项均可由运行时合同裁决；
+- [x] 生成 `kindred-activity-intents-v2` 和 `kir-pilot-v2`，按完全相同 context 迁移 158 条人工标签；
+- [x] 人工补审公开互动正例与私信 near-OOS 两条新增 context，并通过 hash-bound 工作簿导入 gate；
+- [x] 基于完整 v2 review 重新生成 17 条受控分歧与 15 条一致抽查包；
+- [x] 完成 grounded v2 仲裁，并以 candidate/taxonomy/grounding/response 四重 hash gate 导入 32 条 resolution；
+- [x] 将 3 条 policy impact 拆为 routing Gold + `open_intent_candidate`，不污染执行感知 taxonomy；
+- [x] 根据最终 routing 标签复核 semantic tags、hard-negative competitors、context pair 和关系 ID；
+- [x] 写入 reviewer/adjudicator/label-source provenance，物化 160 条 adjudicated pre-split Gold；
+- [x] IE1.3 分配 group-safe dev/test 后转换为正式 `Case` 并冻结。
 
 每条 Gold 必须能从输入内审计 decision evidence；`gold.evidence_quote` 不传给 baseline。所有内容使用合成
 或人工脱敏场景，不拷贝生产 State/Thought。
 
-当前 `data/kir-pilot-v1/candidates.jsonl` 明确是 `llm_assisted_pending_human_review`，不是正式 Gold；执行
-`uv run intentbench dataset candidates validate` 只证明 schema、分布、切片和关系合同成立。人工复核未完成前
-不得进入 IE1.3 split/freeze。
+原始 `data/kir-pilot-v2/candidates.jsonl` 继续作为不可变 pending 候选证据；人工复核和仲裁后的 Gold 位于
+`data/kir-pilot-v2/adjudicated/cases.jsonl`。该上游产物仍使用无 split 的 `AdjudicatedCase`；IE1.3 已只读
+消费它，并按完整关系连通分量生成正式 `Case` dev/test，未回写候选、review 或 adjudicated Gold。
 
 #### IE1.3 Group split 与冻结
 
-- 对共享 scenario/paraphrase/contrast id 的 case 建边，以连通分量生成唯一 `split_group_id`，并令
+- [x] 对共享 scenario/paraphrase/contrast id 的 case 建边，以连通分量生成唯一 `split_group_id`，并令
   `bootstrap_cluster_id=split_group_id`；`source` 只用于 provenance/stratification，不作为 group key；
-- 以完整 group 为原子，近似分层得到 dev 48 / test 112；
-- 自动检测相同或归一化文本、关系边和 group 的跨 split 泄漏；
-- 输出分布和切片覆盖，生成 dataset card；
-- 记录 taxonomy、dev、test 的 SHA-256；
-- 在 freeze manifest 预选 24 个 semantic-preservation slice IDs；
-- 冻结后任何修订都创建新 dataset version，不覆盖 `kir-pilot-v1`。
+- [x] 以完整 group 为原子，在 decision/intent/near-OOS 使用精确配额，在其余诊断切片使用确定性近似
+  分层，得到 dev 48 / test 112；
+- [x] 自动检测关系边和 group 的跨 split 泄漏，并验证正式 Case/taxonomy/evidence 合同；
+- [x] 输出分布和 case/cluster 切片覆盖，生成 dataset card；
+- [x] 记录 taxonomy、adjudicated Gold、materialization receipt、dev、test、split 和 dataset card 的 SHA-256；
+- [x] 在 split/freeze manifest 预选 24 个 distinct-cluster semantic-preservation Case IDs；
+- [x] 使用拒绝覆盖且可幂等再验证的写入策略；冻结后任何修订都创建新 dataset version，不覆盖
+  `kir-pilot-v2`。
+
+实际冻结结果：112 个关系连通分量分为 dev 35 / test 77 个 group；dev decision 为
+`24/10/7/7`，八个 in-scope intent 各 3 条，near-OOS 5 条。full、Gold-in-scope、near-OOS、no-intent
+四个 required test domain 分别有 77、43、11、11 个 bootstrap cluster。`test.jsonl` SHA-256 为
+`648ebce7fd1fe9d9ce9699fd96f27948a1aa675fa4f8db1d73aa07bf4ef57fa5`。冻结过程没有生成 test prediction。
 
 **Exit gate IE1**
 
@@ -279,7 +307,8 @@ IE1.1 的 guideline fixtures 使用 `guide-*` ID 且没有 case/split 身份，�
 #### IE3.2 Freeze 与运行
 
 - 在 test 前冻结 B0/B1 配置、三个 LLM Prompt、Provider 配置和 dependency lock；
-- 把模型角色、Prompt/config hash、预算和三态门写入 `kir-pilot-v1-experiment.yaml`；
+- 把模型角色、Prompt/config hash、预算和三态门写入新的 `kir-pilot-v2-experiment.yaml`，并绑定已冻结的
+  v2 dataset manifest；
 - 预登记 Gemini primary、DeepSeek weak 与 OpenAI cross-provider-reference；只有 primary 有全局 verdict
   authority，后两者只做各自模型内的 `B3-B2b` 复现；
 - 先完整运行 dev sanity check，再对 frozen test 执行版本化 run；

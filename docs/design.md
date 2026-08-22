@@ -1,8 +1,8 @@
 # 求职优先的意图识别 Workbench：数据、基线、OOS 与评测闭环
 
-> ✅ **Status**: `IE0 complete / IE1 not started`
+> ✅ **Status**: `IE0 complete / IE1 complete and dataset frozen / IE2 pending`
 >
-> 日期：2026-08-21
+> 日期：2026-08-22
 >
 > 本文取代 Kindred 产品仓库中《开放意图形成与 Activity 诚实落地》的**近期实施优先级**；原文继续留在
 > Kindred，作为潜在生产架构参考，不复制到本评测仓库。
@@ -130,9 +130,9 @@ classification。把差异讲清楚反而是亮点：传统 NLU 关注 utterance
 
 ## 3. 任务定义
 
-### 3.1 冻结 taxonomy
+### 3.1 冻结 taxonomy 与运行时 grounding
 
-V1 使用一个独立、版本化的 `kindred-activity-intents-v1`，冻结以下 8 个 in-scope intent：
+当前实验使用版本化的 `kindred-activity-intents-v2`，冻结以下 8 个 in-scope intent：
 
 ```text
 create_picture
@@ -145,8 +145,10 @@ take_a_walk
 visit_cultural_place
 ```
 
-Workbench 不在运行时扫描当前安装目录决定标签。实验必须绑定 taxonomy 版本，避免 Activity package
-增删后旧结果不可复现。每个 intent 固定：
+Taxonomy 不是靠名字或需求讨论猜测边界。维护者通过显式命令从 Kindred 正在使用的 Python distribution
+加载 Activity/Action，记录 manifest、SKILL、Action closure 与内容哈希，生成
+`kindred-activity-grounding-v1` 静态快照；数据审计和实验阶段只读该快照，不在每次评测时动态扫描 Kindred。
+实验必须同时绑定 grounding 与 taxonomy 版本，避免 Activity package 增删后旧结果不可复现。每个 intent 固定：
 
 - `name`；
 - 一句话语义定义；
@@ -155,8 +157,8 @@ Workbench 不在运行时扫描当前安装目录决定标签。实验必须绑�
 - 三至五个 canonical examples；
 - 容易混淆的 sibling intents。
 
-`play_xiaohongshu` 即使来自私有派生 runtime，也可以作为已公开讨论过的冻结实验标签；Workbench 不调用
-XHS Capability，不需要真实账号或平台访问。
+`play_xiaohongshu` 的运行时合同覆盖公开浏览、搜索、互动、创作和发布，明确排除私信。Workbench 只评测
+意图分类，不调用 XHS Capability，不需要真实账号或平台访问。
 
 ### 3.2 四类决策
 
@@ -251,6 +253,11 @@ Gold 的字段合同与 prediction 分开：
 它证明标注决定来自输入，不代表 `no_intent` 必须含有正向行动表达。near-OOS case 还必须通过相同
 `contrast_group_id` 关联至少一个 sibling-ID case，且其 Gold target 出现在
 `near_oos_sibling_intents`。
+
+Case 还可以携带独立于 routing Gold 的 `open_intent_candidate`。它只记录目录外或尚不足以安全映射到
+Activity 的可观察想法，包含稳定名称、输入内 evidence、horizon、`catalog_status`，并固定
+`routing_effect=none`、`observability=log_candidate`。该字段不改变 decision/target，不参与 HEM，也不能用
+“最相近 Activity”回填；它用于日志、taxonomy backlog 或未来的用户可见提示。
 
 评测全集以 Gold case IDs 为准：
 
@@ -401,6 +408,13 @@ domain 的 full-test HEM、Gold-in-scope、near-OOS 和 no-intent 计算正式 p
     否则必须在报告披露潜在人为记忆泄漏；
 11. 任何测试集修订都增加 dataset version，不覆盖旧结果。
 
+IE1.2 独立复核采用两段式揭示：initial workspace 只展示稳定乱序的 review item ID 与 `context`，人工先提交
+decision、target、evidence、slots；字段写入并绑定 reviewer/timestamp 后，才生成与 LLM 辅助草稿标签的
+dataset-QA 比较，再审 tags、hard-negative competitors、context perturbation 和关系 ID。Workspace 绑定
+candidate/taxonomy SHA-256，不能在候选变化后复用。比较结果不得称为模型准确率，人工 initial label 也只有
+在分歧仲裁后才能成为 Gold。草稿已经揭示后，同一 reviewer 的 `blind_retest` 只能作为可选的
+intra-annotator stability 检查；真正的 IAA 需要第二名未见草稿的独立 reviewer。
+
 dev/test 只能按完整 `split_group_id` 分配，同一 group 不得跨 split。paired cluster bootstrap 从 test 的
 `bootstrap_cluster_id` 集合中有放回抽取同样数量的 cluster，每次抽到一个 cluster 就纳入其中全部 case；
 B2b/B3 使用完全相同的 cluster draws。任何 required metric slice 少于 8 个不同 cluster 时，不生成正式
@@ -409,7 +423,7 @@ CI，并由 verdict 判为 `inconclusive`。CI 固定使用 percentile 95% inter
 间插值。这些数值和算法进入 evaluator 单元测试，不允许看结果后更换。
 
 冻结分两层：`freeze-manifest.json` 固定 taxonomy/dev/test/split hashes；
-`kir-pilot-v1-experiment.yaml` 固定 Prompt、few-shot IDs、adapter config、阈值、prototype IDs、模型角色、
+后续 `kir-pilot-v2-experiment.yaml` 固定 Prompt、few-shot IDs、adapter config、阈值、prototype IDs、模型角色、
 预算、verdict 与 dependency lock。`run --split test` 必须同时验证两层文件存在且所有 hash 匹配，否则拒绝
 运行；该拒绝路径必须有自动测试。
 
@@ -418,6 +432,12 @@ Prompt 和阈值冻结前不可见，才允许称为 blind test。单人实施�
 dataset hash、adapter version、Prompt hash、阈值和 primary decision model；开发期间 runner 只开放 dev，
 冻结后才执行 test。这个流程降低调参泄漏，但不能消除作者对自编样本的记忆，因此不得把结果包装成无偏
 benchmark。
+
+IE1.3 已在首次 test prediction 前完成数据冻结。160 条 Gold 的 112 个关系连通分量被确定性分为 dev
+35 groups / 48 cases 与 test 77 groups / 112 cases；full、Gold-in-scope、near-OOS、no-intent 四个
+required test domain 分别包含 77、43、11、11 个 bootstrap cluster。精确分配、诊断切片统计、24 条
+semantic-preservation audit IDs 和上游 hashes 见 `data/kir-pilot-v2/split-manifest.json`；数据层冻结绑定见
+`data/kir-pilot-v2/freeze-manifest.json`。当前 experiment lock 尚未冻结，因此正式 test runner 仍须拒绝运行。
 
 ## 5. Baseline 矩阵
 
@@ -683,7 +703,7 @@ Workbench 已拆成独立仓库，正式 source layout 统一为 `src/intentbenc
 ```text
 src/intentbench/     # schemas、runner、evaluator、statistics、adapters
 configs/             # taxonomy 与冻结实验合同
-data/kir-pilot-v1/   # dev/test、dataset card、data freeze hashes
+data/kir-pilot-v2/   # adjudicated Gold、dev/test、dataset card、data freeze hashes
 prompts/             # B2a/B2b/B3 versioned prompts
 experiments/
   <run-id>/
@@ -920,6 +940,10 @@ Workbench 完成后，根据投递岗位选择一条，不同时展开：
 - 人类 pairwise preference 或 rubric-based appropriateness；
 - 是否机械复述候选 description；
 - 是否产生不在目录中的可理解意图。
+
+对于输入已经明确表达、但目录不能执行或描述仍不足的想法，可以复用 V1 的非路由
+`open_intent_candidate` 作为观测事件；例如 `slow_run/now`、`learn_music/later`。这只证明系统捕捉到想法，
+不把它伪装成已有 Activity 的正确路由。
 
 这属于 autonomous behavior evaluation，不计算“下一步 Activity accuracy”，也不能由标注者规定某一拍
 必须刷小红书、散步或休息。

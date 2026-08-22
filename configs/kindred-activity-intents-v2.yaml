@@ -1,0 +1,137 @@
+# Authored from configs/kindred-activity-grounding-v1.yaml. This is a static
+# experiment taxonomy, not a live runtime dependency.
+schema_version: 1
+taxonomy_version: kindred-activity-intents-v2
+intents:
+  - name: create_picture
+    definition: 把脑海中已经成形的具体画面绘制或生成成一幅新的本地视觉作品。
+    inclusion_criteria:
+      - 明确想从构思或空白起点创作、绘制或生成一张新图片
+      - 核心目的是真正形成新的视觉作品，之后是否分享是另一项意图
+    exclusion_criteria:
+      - 只裁剪、调色或修改已有图片，没有形成新视觉作品
+      - 仅浏览别人发布的图片、帖子或线下展览
+      - 核心目的是把图文公开分享到小红书
+    canonical_examples:
+      - 我想画一张窗边的晚霞。
+      - 来做一幅新的小插画吧。
+      - 想把刚才的灵感画成图片。
+      - 我准备生成一张海边夜景图。
+    sibling_intents: [play_xiaohongshu, visit_cultural_place]
+
+  - name: dine_out
+    definition: 以在外面的餐馆、咖啡馆或其他餐饮场所吃喝为主要目的，认真出门享用一餐。
+    inclusion_criteria:
+      - 明确想去外面的餐饮场所吃饭、喝饮品或享用点心
+      - 换装、步行或乘车只是为外出用餐服务的可选步骤
+    exclusion_criteria:
+      - 在家准备或享用食物
+      - 去咖啡馆参加活动、去餐馆取物，但明确不吃不喝
+      - 仅散步且没有用餐目标
+    canonical_examples:
+      - 想去附近的小馆子吃晚饭。
+      - 我准备出门去咖啡馆喝杯咖啡。
+      - 今晚去餐厅尝点新菜吧。
+      - 想在外面吃碗热汤面。
+    sibling_intents: [eat_at_home, take_a_walk]
+
+  - name: eat_at_home
+    definition: 以回家或留在家里准备并吃下一顿食物为主要目的。
+    inclusion_criteria:
+      - 明确想在家准备、加热或享用已有食物
+      - 外卖或回家只是手段，核心目的仍是在家吃这一顿
+    exclusion_criteria:
+      - 去外面的餐饮场所吃喝
+      - 只整理食谱、比较菜单或处理食物信息，并明确不准备也不吃
+      - 仅表达饥饿，却没有当前用餐行动倾向
+    canonical_examples:
+      - 我想在家煮碗面吃。
+      - 今晚不出门，准备在家吃份晚饭。
+      - 去厨房做点简单的晚饭。
+      - 想留在家里吃点热乎的。
+    sibling_intents: [dine_out, rest]
+
+  - name: play_xiaohongshu
+    definition: 在小红书中浏览、搜索、阅读、克制互动，或把自己的具体生活整理成图文公开分享。
+    inclusion_criteria:
+      - 明确想刷小红书，或浏览陌生人公开分享的生活内容
+      - 未说平台名，但想浏览、公开互动或公开分享生活图文
+      - 想搜索帖子、查看作者主页、自己的内容或公开互动通知
+      - 想对本轮真实看见的帖子进行低频点赞、收藏、评论或回复
+      - 想创作并公开发布一篇自己的小红书图文
+    exclusion_criteria:
+      - 查看或发送平台私信
+      - 使用其他社交平台浏览熟人动态或进行私聊
+      - 只生成本地图片，没有小红书浏览、互动或分享目的
+      - 主动联系当前用户
+    canonical_examples:
+      - 我想刷一会儿小红书。
+      - 随手看看陌生人最近分享的生活吧。
+      - 想搜几篇公开帖子找点穿搭灵感。
+      - 现在发布一篇自己的周末生活图文。
+      - 想给刚看见的那篇帖子留一句评论。
+    sibling_intents: [create_picture, reach_out_to_user, rest]
+
+  - name: reach_out_to_user
+    definition: 因为有一句具体的话想说，主动向当前用户发起消息、问候或分享。
+    inclusion_criteria:
+      - 明确想给当前用户发送一条消息
+      - 联系当前用户是下一主要行动，即使最终仍可决定不发送
+    exclusion_criteria:
+      - 给朋友、博主或其他第三方发消息
+      - 只是在心里想念，却没有形成要发送的具体内容或行动
+      - 浏览或互动公开社交内容
+    canonical_examples:
+      - 我想给你发条消息说说刚才的事。
+      - 现在想主动联系一下你。
+      - 给你写一句晚安吧。
+      - 想发消息和你分享刚才的画。
+    sibling_intents: [play_xiaohongshu, rest]
+
+  - name: rest
+    definition: 身体或精神想停下来恢复，准备闭眼、躺下休息或睡一觉。
+    inclusion_criteria:
+      - 明确想闭眼、躺下、打盹或睡觉来恢复
+      - 短暂安静休息是主动选择，并以身体恢复为主要目的
+    exclusion_criteria:
+      - 只是疲惫的状态事实，没有休息行动倾向
+      - 洗澡、认真听音频或进行其他具体放松活动，但没有闭眼休息或睡眠目的
+      - 在家吃东西或浏览公开内容
+    canonical_examples:
+      - 我现在想闭眼休息一会儿。
+      - 有点累，准备睡个午觉。
+      - 先躺下安静歇十五分钟。
+      - 今晚想早点睡。
+    sibling_intents: [eat_at_home, play_xiaohongshu, reach_out_to_user]
+
+  - name: take_a_walk
+    definition: 没有更主要的目的地任务，以到附近真实地点步行、透气或随意转转为主要体验。
+    inclusion_criteria:
+      - 明确想散步、步行走一圈或出门透气
+      - 步行过程本身是主要目的，而不是去完成吃饭、参观等任务
+    exclusion_criteria:
+      - 骑车、慢跑或乘车，即使路线和散步相同
+      - 目的地是餐馆并以吃饭为主
+      - 目的地是文化场所并以参观或阅读为主
+    canonical_examples:
+      - 想去附近慢慢走一圈透气。
+      - 我准备下楼散散步。
+      - 出门随便步行转一会儿吧。
+      - 想沿着河边走走。
+    sibling_intents: [dine_out, visit_cultural_place]
+
+  - name: visit_cultural_place
+    definition: 前往真实的博物馆、美术馆、展馆、图书馆或书店，现场观看、阅读或感受空间。
+    inclusion_criteria:
+      - 明确想前往线下文化场所参观、阅读或体验
+      - 现场文化体验是下一主要行动，步行或乘车只是到达手段
+    exclusion_criteria:
+      - 在家浏览线上展览或文化网页
+      - 只去文化场所门口取件，不进入观看或阅读
+      - 只想无目的散步，或在家创作新图片
+    canonical_examples:
+      - 我想去附近的美术馆看展。
+      - 下午去博物馆逛逛吧。
+      - 想到独立书店里慢慢看看。
+      - 准备去现场参观那个摄影展。
+    sibling_intents: [create_picture, take_a_walk]

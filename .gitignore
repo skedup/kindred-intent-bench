@@ -22,3 +22,8 @@ provider-responses/
 # IE0 does not version ad-hoc experiment probes.
 experiments/*/
 !experiments/.gitkeep
+
+# Human-review workbooks are versioned; rendered previews and inspection dumps are local QA.
+outputs/**/previews/
+outputs/**/*.inspect.ndjson
+~$*.xls*

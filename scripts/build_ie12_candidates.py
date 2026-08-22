@@ -23,8 +23,8 @@ from intentbench.schemas import (
 from intentbench.taxonomy import load_taxonomy
 
 ROOT = Path(__file__).parents[1]
-OUTPUT_PATH = ROOT / "data/kir-pilot-v1/candidates.jsonl"
-TAXONOMY_PATH = ROOT / "configs/kindred-activity-intents-v1.yaml"
+OUTPUT_PATH = ROOT / "data/kir-pilot-v2/candidates.jsonl"
+TAXONOMY_PATH = ROOT / "configs/kindred-activity-intents-v2.yaml"
 
 INTENTS = (
     "create_picture",
@@ -78,12 +78,12 @@ IN_SCOPE_TEXTS: dict[str, tuple[str, ...]] = {
         "接下来留在屋里做碗简单的汤面吃。",
     ),
     "play_xiaohongshu": (
-        "现在浏览一篇公开的周末生活帖子。",
+        "现在发布一篇公开的周末生活帖子。",
         "查看一位博主公开发布的穿搭链接。",
         "接下来看看别人公开分享的旅行照片。",
         "接下来看看别人公开分享的旅行照片。",
         "现在看看大家分享的居家布置灵感。",
-        "想浏览陌生人公开发布的探店笔记。",
+        "想给刚看见的一篇公开穿搭帖子留一句简短评论。",
         "接下来翻翻别人最近晒出的植物养护经验。",
         "想看看公开社区里大家都在分享什么。",
         "现在刷一会儿小红书里的生活帖子。",
@@ -146,7 +146,11 @@ NEAR_OOS: tuple[tuple[str, str, str], ...] = (
     ("dine_out", "去小馆只取回落下的雨伞，不在那里吃饭。", "相同场所下主要目的不是用餐。"),
     ("eat_at_home", "现在在厨房整理食谱，今天不做饭也不吃。", "厨房任务不等于准备或享用食物。"),
     ("eat_at_home", "比较外卖菜单，但现在不下单也不吃。", "浏览菜单没有形成在家用餐行动。"),
-    ("play_xiaohongshu", "现在发布一篇公开的周末生活帖子。", "发布内容不等于浏览公开内容。"),
+    (
+        "play_xiaohongshu",
+        "现在打开小红书私信，查看博主私下发来的周末生活照片。",
+        "小红书私信不属于公开内容、公开互动通知或发布能力。",
+    ),
     ("play_xiaohongshu", "给同一位博主私信询问穿搭链接。", "私信第三方不是浏览公开帖子。"),
     ("reach_out_to_user", "现在给一位老同学发一句问候。", "接收者不是当前用户。"),
     ("reach_out_to_user", "想给一位老同学发一句晚安。", "接收者不是当前用户。"),
@@ -292,7 +296,7 @@ SLOT_DEFAULTS: dict[str, tuple[str, str]] = {
     "create_picture": ("创作新的视觉作品", "新图片"),
     "dine_out": ("到外面的餐饮场所吃喝", "餐饮场所"),
     "eat_at_home": ("在当前住处准备或享用食物", "家中的一餐"),
-    "play_xiaohongshu": ("浏览他人公开分享的生活内容", "公开生活帖子"),
+    "play_xiaohongshu": ("在小红书浏览、公开互动或分享自己的图文", "小红书内容"),
     "reach_out_to_user": ("主动联系当前用户", "给当前用户的消息"),
     "rest": ("暂停行动并安静休息", "休息时段"),
     "take_a_walk": ("以步行为主要目的外出", "附近步行路线"),
@@ -546,7 +550,7 @@ def build_specs() -> list[CandidateSpec]:
 
 
 def build_case(spec: CandidateSpec, ordinal: int) -> DraftCase:
-    case_id = f"draft-kir-pilot-{ordinal:04d}"
+    case_id = f"draft-kir-pilot-v2-{ordinal:04d}"
     tags = ["multi_turn" if spec.multi_turn else "single_turn"]
     tags.extend(spec.tags)
     if spec.multi_turn:
