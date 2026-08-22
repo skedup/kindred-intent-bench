@@ -1,0 +1,169 @@
+{
+  "checked_at": "2026-08-22T17:06:53.161284+00:00",
+  "experiment_config_sha256": "7df5f4c3e5fa4098ffdf6bb0ed68b9618c7dc01d92beaa736fb5c83c9d54f52b",
+  "fixture_id": "synthetic-intent-readiness-v1",
+  "fixture_scope": "synthetic_dev_only",
+  "fixture_sha256": "94b143076a8d57d0d0505562a0a4b3cd0b20b328391d735dee32c0a013fba6d7",
+  "model_authority": {
+    "observed_on": "2026-08-21",
+    "primary_source": "kindred_openclaw_main_session_runtime_metadata",
+    "provider_pool_source": "kindred_runtime_configuration"
+  },
+  "record_kind": "provider_readiness",
+  "required_roles": [
+    "primary_decision",
+    "weak_decision",
+    "cross_provider_reference",
+    "embedding"
+  ],
+  "results": [
+    {
+      "adapter": "google_generate_content_v1beta",
+      "connectivity": true,
+      "execution_environment": "mac-kindred-runtime-config",
+      "fixture_expectation_match": true,
+      "identity_match": true,
+      "input_tokens": 42,
+      "latency_ms": 1874.27,
+      "output_tokens": 53,
+      "provider": "google_generative_language",
+      "provider_usage_fields": [
+        "candidatesTokenCount",
+        "promptTokenCount",
+        "totalTokenCount"
+      ],
+      "raw_response_sha256": "3afd9b9f1207263c3b7f362e6206eb87b0f985e70fae9dfdc97c95134336c504",
+      "reported_model": "gemini-3.6-flash",
+      "requested_model": "gemini-3.6-flash",
+      "required_arms": [
+        "B2a",
+        "B2b",
+        "B3"
+      ],
+      "role": "primary_decision",
+      "runtime": {
+        "machine": "arm64",
+        "system": "Darwin"
+      },
+      "status": "passed",
+      "structured_output_contract_match": true,
+      "structured_output_mode": "provider_json_schema",
+      "structured_output_valid": true,
+      "timeout_seconds": 30.0,
+      "total_tokens": 95,
+      "usage_available": true,
+      "usage_contract_match": true,
+      "verdict_authority": true
+    },
+    {
+      "adapter": "deepseek_chat_completions_json_v1",
+      "connectivity": true,
+      "execution_environment": "mac-kindred-runtime-config",
+      "fixture_expectation_match": true,
+      "identity_match": true,
+      "input_tokens": 286,
+      "latency_ms": 3317.032,
+      "output_tokens": 355,
+      "provider": "deepseek",
+      "provider_usage_fields": [
+        "completion_tokens",
+        "prompt_cache_hit_tokens",
+        "prompt_cache_miss_tokens",
+        "prompt_tokens",
+        "reasoning_tokens",
+        "total_tokens"
+      ],
+      "raw_response_sha256": "d9551c8da11f8355922a2090dd3bf3023d66c3eeb46f0587497ed2a8a25b82a9",
+      "reported_model": "deepseek-v4-flash",
+      "requested_model": "deepseek-v4-flash",
+      "required_arms": [
+        "B2b",
+        "B3"
+      ],
+      "role": "weak_decision",
+      "runtime": {
+        "machine": "arm64",
+        "system": "Darwin"
+      },
+      "status": "passed",
+      "structured_output_contract_match": true,
+      "structured_output_mode": "json_object_plus_local_schema_validation",
+      "structured_output_valid": true,
+      "timeout_seconds": 60.0,
+      "total_tokens": 641,
+      "usage_available": true,
+      "usage_contract_match": true,
+      "verdict_authority": false
+    },
+    {
+      "adapter": "openai_responses_json_schema_v1",
+      "connectivity": true,
+      "execution_environment": "mac-kindred-runtime-config",
+      "fixture_expectation_match": true,
+      "identity_match": true,
+      "input_tokens": 148,
+      "latency_ms": 3287.638,
+      "output_tokens": 91,
+      "provider": "openai",
+      "provider_usage_fields": [
+        "input_tokens",
+        "output_tokens",
+        "reasoning_tokens",
+        "total_tokens"
+      ],
+      "raw_response_sha256": "acaeedc79df9a6977169c4ab97d67464b539159d50514ebfd74b7b28d253b674",
+      "reported_model": "gpt-5.6-luna",
+      "requested_model": "gpt-5.6-luna",
+      "required_arms": [
+        "B2b",
+        "B3"
+      ],
+      "role": "cross_provider_reference",
+      "runtime": {
+        "machine": "arm64",
+        "system": "Darwin"
+      },
+      "status": "passed",
+      "structured_output_contract_match": true,
+      "structured_output_mode": "provider_json_schema",
+      "structured_output_valid": true,
+      "timeout_seconds": 60.0,
+      "total_tokens": 239,
+      "usage_available": true,
+      "usage_contract_match": true,
+      "verdict_authority": false
+    },
+    {
+      "adapter": "google_embed_content_v1beta",
+      "connectivity": true,
+      "dimension": 3072,
+      "dimension_match": true,
+      "execution_environment": "mac-kindred-runtime-config",
+      "expected_dimension": 3072,
+      "finite_vector": true,
+      "identity_evidence": "model_specific_request_endpoint",
+      "identity_reported_by_provider": false,
+      "latency_ms": 1178.704,
+      "provider": "google_generative_language",
+      "raw_response_sha256": "0faf7f1e29942fdcc8a3fe163739f226059e0e0a494afe0f828e3309d4b0a665",
+      "reported_model": null,
+      "requested_model": "gemini-embedding-001",
+      "role": "embedding",
+      "runtime": {
+        "machine": "arm64",
+        "system": "Darwin"
+      },
+      "status": "passed",
+      "timeout_seconds": 30.0
+    }
+  ],
+  "schema_version": 2,
+  "secret_policy": "environment_variable_name_only; no secret or raw response persisted",
+  "selected_roles": [
+    "primary_decision",
+    "weak_decision",
+    "cross_provider_reference",
+    "embedding"
+  ],
+  "status": "passed"
+}

@@ -127,3 +127,20 @@ def test_prompt_selection_receipt_hashes_committed_dev_evidence() -> None:
             assert manifest["total_usage"]["input_tokens"] == candidate["input_tokens"]
             assert manifest["total_usage"]["output_tokens"] == candidate["output_tokens"]
             assert manifest["estimated_cost"] == candidate["estimated_cost_usd"]
+
+
+def test_ie3_readiness_is_bound_to_frozen_experiment() -> None:
+    readiness_path = Path("configs/kir-pilot-v2-ie3-provider-readiness.json")
+    readiness_text = readiness_path.read_text(encoding="utf-8")
+    readiness = json.loads(readiness_text)
+    assert readiness["status"] == "passed"
+    assert readiness["experiment_config_sha256"] == sha256_file(EXPERIMENT)
+    assert readiness["selected_roles"] == [
+        "primary_decision",
+        "weak_decision",
+        "cross_provider_reference",
+        "embedding",
+    ]
+    assert all(result["status"] == "passed" for result in readiness["results"])
+    assert "apiKey" not in readiness_text
+    assert "GEMINI_API_KEY=" not in readiness_text
