@@ -1,6 +1,6 @@
 schema_version: 1
-status: draft
-experiment_id: kir-pilot-v2
+status: frozen
+experiment_id: kir-pilot-v2-ie3
 dataset_version: kir-pilot-v2
 taxonomy_version: kindred-activity-intents-v2
 dataset_freeze_sha256: e079e192837da06daa8a00ab4cf73174ee4463bdeeb9b3f0271e52929597d9aa

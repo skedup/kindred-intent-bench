@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+import yaml
 from click.testing import CliRunner
 
 from intentbench.cli import main
@@ -11,12 +12,16 @@ from intentbench.freeze import FreezeGuardError
 
 
 def test_formal_baseline_refuses_draft_experiment_before_writing(tmp_path: Path) -> None:
+    payload = yaml.safe_load(Path("configs/kir-pilot-v2-ie3-experiment.yaml").read_text())
+    payload["status"] = "draft"
+    draft_experiment = tmp_path / "draft-experiment.yaml"
+    draft_experiment.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
     with pytest.raises(FreezeGuardError, match="experiment lock is not frozen"):
         run_b0_test(
             cases_path=Path("data/kir-pilot-v2/test.jsonl"),
             taxonomy_path=Path("configs/kindred-activity-intents-v2.yaml"),
             dataset_manifest_path=Path("data/kir-pilot-v2/freeze-manifest.json"),
-            experiment_path=Path("configs/kir-pilot-v2-ie3-experiment.yaml"),
+            experiment_path=draft_experiment,
             output_dir=tmp_path / "b0",
             repository_root=Path("."),
         )
@@ -31,6 +36,10 @@ def test_test_cli_checks_freeze_before_provider_credentials(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    payload = yaml.safe_load(Path("configs/kir-pilot-v2-ie3-experiment.yaml").read_text())
+    payload["status"] = "draft"
+    draft_experiment = tmp_path / "draft-experiment.yaml"
+    draft_experiment.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
     result = CliRunner().invoke(
         main,
         [
@@ -40,6 +49,8 @@ def test_test_cli_checks_freeze_before_provider_credentials(
             "weak_decision",
             "--cache-dir",
             str(tmp_path / "cache"),
+            "--experiment",
+            str(draft_experiment),
         ],
     )
     assert result.exit_code == 1

@@ -1,6 +1,6 @@
 # Kindred Intent Bench 实施计划
 
-> Status: `IE0 complete / IE1 complete and dataset frozen / IE2 complete / IE3 implementation and dev selection complete / freeze pending`
+> Status: `IE0 complete / IE1 complete and dataset frozen / IE2 complete / IE3 implementation, dev selection, and experiment freeze complete / formal test pending`
 >
 > 日期：2026-08-23
 >
@@ -350,7 +350,7 @@ Gemini dev 已完成一次预登记结构修订并停止调 Prompt：B2b v2 为 
 
 #### IE3.2 Freeze 与运行
 
-- [ ] 在 test 前冻结 B0/B1 配置、三个 LLM Prompt、Provider 配置和 dependency lock；
+- [x] 在 test 前冻结 B0/B1 配置、三个 LLM Prompt、Provider 配置和 dependency lock；
 - [x] 把模型角色、Prompt/config hash、预算和三态门写入新的 `kir-pilot-v2-ie3-experiment.yaml`，并绑定已冻结的
   v2 dataset manifest；
 - 预登记 Gemini primary、DeepSeek weak 与 OpenAI cross-provider-reference；只有 primary 有全局 verdict

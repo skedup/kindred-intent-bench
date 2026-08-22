@@ -114,6 +114,10 @@ def test_b2b_requires_existing_call_1_and_never_falls_back_to_provider(tmp_path:
 def test_formal_test_runner_rejects_draft_experiment_before_any_provider_call(
     tmp_path: Path,
 ) -> None:
+    payload = yaml.safe_load(Path("configs/kir-pilot-v2-ie3-experiment.yaml").read_text())
+    payload["status"] = "draft"
+    draft_experiment = tmp_path / "draft-experiment.yaml"
+    draft_experiment.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
     client = TwoStageGenerationClient()
     with pytest.raises(FreezeGuardError, match="experiment lock is not frozen"):
         run_b2b_test(
@@ -124,7 +128,7 @@ def test_formal_test_runner_rejects_draft_experiment_before_any_provider_call(
             dev_cases_path=Path("data/kir-pilot-v2/dev.jsonl"),
             taxonomy_path=Path("configs/kindred-activity-intents-v2.yaml"),
             dataset_manifest_path=Path("data/kir-pilot-v2/freeze-manifest.json"),
-            experiment_path=Path("configs/kir-pilot-v2-ie3-experiment.yaml"),
+            experiment_path=draft_experiment,
             output_dir=tmp_path / "test-run",
             repository_root=Path("."),
         )

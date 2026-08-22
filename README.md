@@ -5,7 +5,7 @@ Kindred Intent Bench 是一个离线优先的 open-set intent recognition Workbe
 `oos / no_intent / ambiguous`。
 
 它不替 Kindred 决定“应该想做什么”，也不把自主选择分布是否均匀当作正确性指标。当前已完成 IE0、IE1、
-IE2，以及 IE3 的实现和 Gemini dev Prompt 选择；experiment lock 仍未冻结，正式 test 尚未运行。IE1.2
+IE2，以及 IE3 的实现和 Gemini dev Prompt 选择；experiment lock 已冻结，正式 test 尚未运行。IE1.2
 已从 Kindred 实际运行环境捕获 Activity/Action grounding，并完成 taxonomy
 v2 与 160 条候选校准；158 条原人工标签按完全相同 context 迁移，2 条新增边界样本也已完成人工补审。
 32 条 grounded 仲裁结果已通过 hash gate 导入；3 条 policy impact 已用 routing + open-intent 双通道解决。
@@ -184,7 +184,7 @@ uv run intentbench evaluate --help
 ```
 
 以上命令不访问 LLM/embedding Provider；最后一条在已冻结仓库上执行幂等再验证并返回 `unchanged`。正式
-test runner 后续必须通过双冻结 guard；dataset 已 frozen，但 experiment 仍是 `draft`，因此 test 仍不可运行。
+test runner 必须通过双冻结和 clean-commit guard；dataset 与 IE3 experiment 均已 frozen，正式结果尚未生成。
 
 ## 显式 Provider smoke
 
