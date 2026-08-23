@@ -1,0 +1,67 @@
+{
+  "checked_at": "2026-08-23T09:02:52.375758+00:00",
+  "experiment_config_sha256": "4194c0ae93b06e29a2aa8b81aec40e270481eea00550514f69277f740c588195",
+  "fixture_id": "synthetic-intent-readiness-v1",
+  "fixture_scope": "synthetic_dev_only",
+  "fixture_sha256": "94b143076a8d57d0d0505562a0a4b3cd0b20b328391d735dee32c0a013fba6d7",
+  "model_authority": {
+    "observed_on": "2026-08-21",
+    "primary_source": "kindred_openclaw_main_session_runtime_metadata",
+    "provider_pool_source": "kindred_runtime_configuration"
+  },
+  "record_kind": "provider_readiness_partial",
+  "required_roles": [
+    "primary_decision",
+    "weak_decision",
+    "cross_provider_reference",
+    "embedding"
+  ],
+  "results": [
+    {
+      "adapter": "deepseek_chat_completions_json_v1",
+      "connectivity": true,
+      "execution_environment": "mac-kindred-runtime-config",
+      "fixture_expectation_match": true,
+      "identity_match": true,
+      "input_tokens": 286,
+      "latency_ms": 3941.916,
+      "output_tokens": 211,
+      "provider": "deepseek",
+      "provider_usage_fields": [
+        "completion_tokens",
+        "prompt_cache_hit_tokens",
+        "prompt_cache_miss_tokens",
+        "prompt_tokens",
+        "reasoning_tokens",
+        "total_tokens"
+      ],
+      "raw_response_sha256": "783a10b2b303e987eb46afd014d9d9a7ab04bbc6f469dbfddae9087aba2c72d5",
+      "reported_model": "deepseek-v4-pro",
+      "requested_model": "deepseek-v4-pro",
+      "required_arms": [
+        "B2b",
+        "B3"
+      ],
+      "role": "weak_decision",
+      "runtime": {
+        "machine": "arm64",
+        "system": "Darwin"
+      },
+      "status": "passed",
+      "structured_output_contract_match": true,
+      "structured_output_mode": "json_object_plus_local_schema_validation",
+      "structured_output_valid": true,
+      "timeout_seconds": 60.0,
+      "total_tokens": 497,
+      "usage_available": true,
+      "usage_contract_match": true,
+      "verdict_authority": false
+    }
+  ],
+  "schema_version": 2,
+  "secret_policy": "environment_variable_name_only; no secret or raw response persisted",
+  "selected_roles": [
+    "weak_decision"
+  ],
+  "status": "passed"
+}

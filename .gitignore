@@ -30,6 +30,8 @@ experiments/*
 !experiments/ie3-openai-recovery/**
 !experiments/ie4-pilot/
 !experiments/ie4-pilot/**
+!experiments/ie3-deepseek-pro-robustness/
+!experiments/ie3-deepseek-pro-robustness/**
 !experiments/reference/
 experiments/reference/*
 !experiments/reference/kir-pilot-v2-ie2-final/
