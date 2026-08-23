@@ -1,6 +1,6 @@
 # Kindred Intent Bench 实施计划
 
-> Status: `IE0 complete / IE1 complete and dataset frozen / IE2 complete / IE3 complete / IE4 complete`
+> Status: `IE0 complete / IE1 complete and dataset frozen / IE2 complete / IE3 complete / IE4 complete / IE4.5A budget attribution complete`
 >
 > 日期：2026-08-23
 >
@@ -407,6 +407,15 @@ corrected B2b/B3 HEM 为 0.9911/0.9464，B3-B2b paired 95% interval 为
   reference 不增加人工 audit；
 - 仓库不包含 secret、生产数据或对 Kindred 的运行时依赖；
 - 报告明确说明 synthetic、balanced、non-blind offline pilot 的外推限制。
+
+### IE4.5A：离线预算归因（完成）
+
+- 从 primary Gemini B2b/B3 冻结 call artifact 逐 case、逐阶段重建 usage、cost 与 latency；
+- 验证 B2b/B3 totals 与 seven-run matrix、run manifest 完全一致；
+- 将 B2b 的 224 个逻辑调用与缓存复用后 112 个新增 Provider call 分开报告；
+- 只报告可观察的 stage-pair 差异，不虚构 taxonomy/Prompt/schema/few-shot/context 的组件 token；
+- 生成 hash-bound JSON 与 Markdown，重复运行返回 `unchanged`、`provider_calls=0`；
+- 保持 IE4 的 `inconclusive / budget_confounded` verdict 不变。
 
 ## 5. 测试策略
 

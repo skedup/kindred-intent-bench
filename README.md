@@ -213,6 +213,22 @@ uv run intentbench ie4 report
 该命令只读取冻结 Gold 与已缓存 prediction，重复运行会验证所有产物字节一致并返回 `unchanged`，
 `provider_calls=0`。
 
+## IE4.5A 离线预算归因
+
+[结构化归因](experiments/ie45-budget-attribution/report.json)和
+[可读报告](experiments/ie45-budget-attribution/report.md)从 primary Gemini 的冻结 B2b/B3 call artifact
+逐 case、逐阶段重建资源使用，不调用 Provider，也不修改 IE4 verdict。B3 相对 B2b 共减少 `148,957`
+tokens：第一调用减少 `177,258`，第二调用增加 `28,301`，后者抵消了部分 Stage A 节省；两臂总 output
+仅相差 `331` tokens，因此观察到的总差异主要来自 input。
+
+归因只支持 arm/stage/case 级精确核算。由于 Prompt、schema、few-shot、context 与 taxonomy 的输入 token
+没有独立 Provider 计量，它不会把第一阶段差异表述成 taxonomy token 的组件级因果估计。B2b 的完整逻辑成本
+包含复用的 B2a-compatible call-1，同时另报本次运行实际新增的 Provider call 数。
+
+```bash
+uv run intentbench ie45 budget-attribution
+```
+
 ## 本地门检
 
 需要 Python 3.10+ 与 [uv](https://docs.astral.sh/uv/)：
@@ -231,9 +247,10 @@ uv run intentbench dataset reviews status
 uv run intentbench dataset gold split-freeze
 uv run intentbench evaluate --help
 uv run intentbench ie4 report
+uv run intentbench ie45 budget-attribution
 ```
 
-以上命令不访问 LLM/embedding Provider；最后一条在已冻结仓库上执行幂等再验证并返回 `unchanged`。正式
+以上命令不访问 LLM/embedding Provider；最后两条在已冻结仓库上执行幂等再验证并返回 `unchanged`。正式
 test runner 必须通过双冻结和 clean-commit guard；dataset 与 IE3 experiment 均已 frozen，首次正式结果已
 生成并保留，后续不会通过重采样或改 Prompt 覆盖原结果。
 

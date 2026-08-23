@@ -1,6 +1,6 @@
 # 开放集意图识别 Workbench：数据、基线、OOS 与评测闭环
 
-> ✅ **Status**: `IE0 complete / IE1 complete and dataset frozen / IE2 complete / IE3 complete / IE4 complete`
+> ✅ **Status**: `IE0 complete / IE1 complete and dataset frozen / IE2 complete / IE3 complete / IE4 complete / IE4.5A budget attribution complete`
 >
 > 日期：2026-08-23
 >
@@ -819,6 +819,16 @@ inter-annotator agreement 或独立 adjudication。
 - 确保 fresh checkout 可复现实验或使用已缓存响应重算报告。
 
 交付：完整报告与技术说明。
+
+### IE4.5A：离线预算归因（完成）
+
+该诊断在 IE4 之后增加，不改写原预注册 verdict。它从 primary B2b/B3 的冻结 `calls.jsonl` 重建 112 个
+case、四个调用阶段的 input/output/retry tokens、成本与延迟，并分别报告完整逻辑调用和缓存复用后的新增
+Provider call 数。报告只作 arm/stage/case 级观察归因；Provider usage 无法把 input 进一步精确拆成 taxonomy、
+Prompt 指令、schema、few-shot 与 context，因此不声称组件级 token 因果贡献。
+
+交付：`experiments/ie45-budget-attribution/report.json + report.md`，重复生成必须返回 `unchanged` 且
+`provider_calls=0`。
 
 ### IE5：严谨性扩展（仅 promising，追加 5～10 天）
 

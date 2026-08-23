@@ -18,6 +18,10 @@ from intentbench.adapters.google import GoogleGenerativeLanguageClient
 from intentbench.adapters.openai import OpenAIResponsesClient
 from intentbench.annotation import validate_annotation_artifacts
 from intentbench.baselines import BaselineRunError, run_b0_dev, run_b1_dev, run_b2a_dev
+from intentbench.budget_attribution import (
+    BudgetAttributionError,
+    build_budget_attribution_report,
+)
 from intentbench.dataset import CandidateDatasetError, validate_candidate_artifact
 from intentbench.deepseek_pro import DeepSeekProReportError, build_deepseek_pro_report
 from intentbench.embedding import EmbeddingCacheError
@@ -1821,6 +1825,58 @@ def ie4_deepseek_pro_report(
     except (OSError, DeepSeekProReportError, ValueError) as exc:
         raise click.ClickException(str(exc)) from exc
     click.echo(json.dumps(report, ensure_ascii=False, sort_keys=True))
+
+
+@main.group("ie45")
+def ie45_group() -> None:
+    """Generate post-IE4 offline diagnostics without changing the frozen verdict."""
+
+
+@ie45_group.command("budget-attribution")
+@click.option(
+    "--matrix",
+    "matrix_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=Path("experiments/ie3-openai-recovery/seven-run-matrix.json"),
+    show_default=True,
+)
+@click.option(
+    "--experiment",
+    "experiment_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=Path("configs/kir-pilot-v2-ie3-experiment.yaml"),
+    show_default=True,
+)
+@click.option(
+    "--output-dir",
+    type=click.Path(path_type=Path, file_okay=False),
+    default=Path("experiments/ie45-budget-attribution"),
+    show_default=True,
+)
+@click.option(
+    "--repository-root",
+    type=click.Path(path_type=Path, exists=True, file_okay=False),
+    default=Path("."),
+    show_default=True,
+)
+def ie45_budget_attribution(
+    matrix_path: Path,
+    experiment_path: Path,
+    output_dir: Path,
+    repository_root: Path,
+) -> None:
+    """Attribute the frozen primary B2b/B3 budget gap by case and stage."""
+
+    try:
+        result = build_budget_attribution_report(
+            matrix_path=matrix_path,
+            experiment_path=experiment_path,
+            output_dir=output_dir,
+            repository_root=repository_root,
+        )
+    except (OSError, BudgetAttributionError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(json.dumps(result, ensure_ascii=False, sort_keys=True))
 
 
 @main.group("freeze")
