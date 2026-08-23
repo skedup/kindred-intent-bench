@@ -360,6 +360,11 @@ Gemini dev 已完成一次预登记结构修订并停止调 Prompt：B2b v2 为 
 - [x] `run --split test` 必须先验证 `freeze-manifest.json` 与 experiment lock 的全部 hash，任一缺失或不匹配就拒绝；
 - [x] 报告 B2b/B3 实际总 token 差异；超过 10% 时自动标记 `budget-confounded`。
 
+OpenAI 首次正式运行的 routing 请求因 Provider JSON Schema 子集不兼容全部返回 HTTP 400；原产物保留。
+修复后按单独登记的 post-freeze recovery 协议复用成功的第一阶段缓存，只重跑两个 arm 的 routing call。
+corrected B2b/B3 HEM 为 0.9911/0.9464，B3-B2b paired 95% interval 为
+[-0.0940, -0.0087]；实际 token 差 19.46%，仍为 `budget-confounded`，且不改变 primary verdict。
+
 **Exit gate IE3**
 
 - B0/B1 各有一组 manifest；primary 的 B2a/B2b/B3 与两个复现角色的 B2b/B3 共七格都有 manifest 与

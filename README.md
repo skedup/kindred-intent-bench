@@ -165,6 +165,12 @@ dev 数字仍只是 48 条 synthetic、non-blind selection set 的结果。
 `1.0000 / 0.9911 / 0.9643`；weak 的 B2b/B3 为 `0.6696 / 0.2679`。OpenAI 两格因冻结的 routing schema
 在第二阶段全部 HTTP 400 且缺 usage，只能作为 adapter 兼容性失败，不作模型效果解释。
 
+首次失败产物没有被覆盖。诊断定位并修复 OpenAI Structured Outputs 的数组 Schema 兼容问题后，按预先
+登记的 post-freeze recovery 协议只重跑原先失败的第二阶段；[完整恢复报告](experiments/ie3-openai-recovery/README.md)
+中 OpenAI B2b/B3 HEM 为 `0.9911 / 0.9464`，B3-B2b 为 `-0.0446`，paired cluster-bootstrap 95% interval
+为 `[-0.0940, -0.0087]`。两臂 token 差为 19.46%，因此仍标记 `budget-confounded`，只作 OpenAI 模型内的
+描述性参考，不改变 Gemini primary 的全局结论。
+
 预注册采用三 Provider、七运行产物矩阵：`gemini-3.6-flash` 是 primary，完整运行
 `B2a/B2b/B3`，且是唯一全局 verdict authority；`deepseek-v4-flash` 是低成本弱模型复现，
 `gpt-5.6-luna` 是跨 Provider 参考复现，二者只运行 `B2b/B3` 并各自比较 `B3-B2b`，不跨模型平均、
