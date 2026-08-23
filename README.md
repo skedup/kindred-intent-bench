@@ -5,7 +5,7 @@ Kindred Intent Bench 是一个离线优先的 open-set intent recognition Workbe
 `oos / no_intent / ambiguous`。
 
 它不替 Kindred 决定“应该想做什么”，也不把自主选择分布是否均匀当作正确性指标。当前 IE0～IE4 Pilot
-均已完成：自动报告、冻结的 48 行人工语义保真审计与[求职讲稿](docs/interview-kit.md)均已定稿。IE1.2
+均已完成：自动报告与冻结的 48 行人工语义保真审计均已定稿。IE1.2
 已从 Kindred 实际运行环境捕获 Activity/Action grounding，并完成 taxonomy
 v2 与 160 条候选校准；158 条原人工标签按完全相同 context 迁移，2 条新增边界样本也已完成人工补审。
 32 条 grounded 仲裁结果已通过 hash gate 导入；3 条 policy impact 已用 routing + open-intent 双通道解决。
