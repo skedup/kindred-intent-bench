@@ -15,7 +15,7 @@
 2. 在同一 160-case 数据集上运行 B0、B1、B2a、B2b、B3；
 3. 离线重算指标、paired cluster bootstrap、混淆矩阵和 badcase；
 4. 用冻结的确定函数输出 `promising / inconclusive / negative`；
-5. 产出面向面试的 README、实验报告和可复现命令。
+5. 产出 README、实验报告和可复现命令。
 
 Pilot 不修改 Kindred，不读取真实 State、Thought 或用户消息，不执行 Activity/Capability，也不建设通用训练
 平台、在线服务或 dashboard。IE5 的 240-case 扩展不进入首轮承诺。
@@ -35,7 +35,7 @@ Pilot 不修改 Kindred，不读取真实 State、Thought 或用户消息，不�
 | 测试集边界 | 默认是 non-blind frozen test；正式 test 必须同时通过 dataset freeze 与 experiment lock hash 门禁 |
 | 结果版本化 | 提交一组脱敏 reference run；临时 probe 和含 secret 的原始响应不进入 Git |
 
-这些选择优先服务“短周期、可复现、方便面试讲解”，不提前抽象成通用 benchmark framework。
+这些选择优先服务“短周期、可复现、方便审计”，不提前抽象成通用 benchmark framework。
 
 ## 2. 目标目录
 
@@ -122,7 +122,7 @@ flowchart LR
     C --> D
     D --> E["Freeze manifest / Prompt / thresholds"]
     E --> F["IE3 B2b/B3 与正式 test run"]
-    F --> G["IE4 报告与求职材料"]
+    F --> G["IE4 报告与技术文档"]
     G --> H{"promising?"}
     H -->|"是"| I["可选 IE5：扩到 240"]
     H -->|"否"| J["保留结论与评测资产"]
@@ -391,11 +391,11 @@ corrected B2b/B3 HEM 为 0.9911/0.9464，B3-B2b paired 95% interval 为
 - evaluator 按有效性 → negative → statistical inconclusive → promising 的冻结顺序生成结论；
 - 所有表格由结构化结果生成，README 不手填与缓存不一致的数字。
 
-#### IE4.2 面试材料
+#### IE4.2 技术文档
 
 - README 首屏说明问题、边界、方法、关键数字、复现命令和真实限制；
-- 生成 5 分钟与 15 分钟项目讲法；
-- 只有完成实验后才填写简历 bullet 中的数字；
+- 生成结构化报告与人类可读摘要；
+- 只有完成实验后才填写摘要中的结果数字；
 - negative/inconclusive 也如实解释其工程价值，不重采样或改 test 追求正结果。
 
 **Exit gate IE4 / Pilot Definition of Done**
@@ -406,7 +406,7 @@ corrected B2b/B3 HEM 为 0.9911/0.9464，B3-B2b paired 95% interval 为
 - 24-case × primary/weak 的 semantic-preservation audit 有冻结 IDs、rubric 和 48 行记录；OpenAI
   reference 不增加人工 audit；
 - 仓库不包含 secret、生产数据或对 Kindred 的运行时依赖；
-- 报告明确说明 synthetic、balanced、non-blind portfolio pilot 的外推限制。
+- 报告明确说明 synthetic、balanced、non-blind offline pilot 的外推限制。
 
 ## 5. 测试策略
 

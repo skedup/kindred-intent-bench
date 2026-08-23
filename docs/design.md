@@ -1,4 +1,4 @@
-# 求职优先的意图识别 Workbench：数据、基线、OOS 与评测闭环
+# 开放集意图识别 Workbench：数据、基线、OOS 与评测闭环
 
 > ✅ **Status**: `IE0 complete / IE1 complete and dataset frozen / IE2 complete / IE3 complete / IE4 complete`
 >
@@ -13,7 +13,7 @@
 
 Kindred 的下一步不应直接改生产 Sense、增加 choice-boundary 双调用、Shadow 存储和 Thought 投影。
 这些工作能够改善产品架构，但实现面大、验证周期长，而且最先产出的只是“又一个 LLM Prompt 方案”，
-不足以精准证明求职市场真正关心的意图识别能力。
+不足以严谨验证意图识别能力。
 
 近期主线改为建设一个**离线、可复现、与生产无副作用的 Intent Recognition Workbench**。V1 只评测
 “输入中已有可观察意图证据时，系统能否正确 grounding”，不评测“Agent 应该凭空形成哪个自主意图”：
@@ -34,11 +34,11 @@ ID Macro-F1 / OOS-F1 / hard-negative / slot / latency / cost
 > 目录 grounding”相比单调用 LLM 和**等调用次数、可比 token 预算**的单通道复核，是否能提升层级正确率、
 > OOS/near-OOS 拒识与弱模型稳定性，同时不明显损害已知 Activity、`no_intent`、延迟和成本？
 
-该路线以 **9 个有效工作日完成 160 条样本的 portfolio pilot** 为目标，另留 2 天风险缓冲；只有 pilot 值得扩展时，再增加至
+该路线以 **9 个有效工作日完成 160 条样本的 offline pilot** 为目标，另留 2 天风险缓冲；只有 pilot 值得扩展时，再增加至
 240 条、复标、弱模型稳定性和更严格统计，完整规模约 **14～19 个有效工作日**（含 Pilot 风险缓冲时
 最多 21 天）。全过程不改
 `src/kindred` 生产路径、不新增 DB、不改变 graph、不接管真实 Activity。无论双阶段结果是 promising、
-inconclusive 还是 negative，都能形成有价值的求职材料，实验也不会影响 Kindred 的生活自主性。
+inconclusive 还是 negative，都保留可审计的技术结论，实验也不会影响 Kindred 的生活自主性。
 
 ## 1. 为什么改重心
 
@@ -57,7 +57,7 @@ inconclusive 还是 negative，都能形成有价值的求职材料，实验也�
 - 最终 production authority 切换。
 
 它是一条合理的产品路线，却把“验证算法假设”和“改造生产系统”绑在一起。若结果不好，很难区分是方法
-无效、数据不够、模型问题、Prompt 问题还是运行时集成问题；在求职语境里也缺少可以横向比较的数字。
+无效、数据不够、模型问题、Prompt 问题还是运行时集成问题，也缺少可以横向比较的数字。
 
 双 Review 还指出一个更根本的问题：**自主选择没有唯一标准答案**。仅凭“晚饭后在家、刚画完图”不能
 人工规定 Kindred 下一步就应该刷小红书；休息、散步、继续安静都可能是合法选择。若把标注者偏好写成
@@ -77,9 +77,9 @@ V1 的“双阶段”不再负责凭空发明一个预定欲望。它只在第�
 当输入已经存在丰富、明确的意图证据时，单通道是否仍会把它们错误压回 rest/eat，以及双阶段是否改善
 这种 grounding collapse。意图形成层本身由 §11.1 的非唯一 Gold 行为评测另行处理。
 
-### 1.2 求职市场真正要看的证据
+### 1.2 严谨评测需要的证据
 
-当前 Agent/NLP 岗位通常不会只问“Prompt 怎么写”，而会继续追问：
+一个完整的 Agent/NLP 意图识别实验不能只回答“Prompt 怎么写”，还需要回答：
 
 1. taxonomy 和标签边界怎么定义；
 2. 数据从哪里来，如何标注和防止泄漏；
@@ -93,16 +93,16 @@ V1 的“双阶段”不再负责凭空发明一个预定欲望。它只在第�
 本项目应先拿出前六项的可复现证据，再决定是否进入生产 Shadow。这样既缩小工作量，也让后续运行时
 决策建立在数据上。
 
-## 2. 求职定位
+## 2. 项目定位
 
-### 2.1 第一目标岗位
+### 2.1 能力范围
 
-V1 主要服务：
+V1 主要覆盖：
 
-- LLM / Agent 应用算法工程师；
-- 对话系统与 Agent intent routing 工程师；
-- NLP 应用工程师；
-- Agent 评测、数据与效果优化工程师。
+- stateful Agent 的 open-set intent routing；
+- 对话上下文中的 evidence grounding；
+- OOS、no-intent、ambiguous 与 near-OOS 评测；
+- 数据、基线、统计和 badcase 的离线闭环。
 
 V1 不声称覆盖：
 
@@ -270,7 +270,7 @@ Activity 的可观察想法，包含稳定名称、输入内 evidence、horizon�
 V1 不把自由文本 `desired_experience/object` 做字符串 exact match。自动指标只计算 `horizon` 等受控枚举
 和字段完整性；Pilot 固定 24 条、扩展固定 40 条 semantic-preservation slice，由人工 rubric 判断关键
 动作、对象与时间范围是否被保留。
-若后续投递传统 NLU/slot-filling 岗，再把 slot 改为受控 ontology 或输入 span，并报告 slot micro-F1。
+若后续扩展到传统 NLU/slot filling，再把 slot 改为受控 ontology 或输入 span，并报告 slot micro-F1。
 
 ## 4. 数据集设计
 
@@ -427,7 +427,7 @@ CI，并由 verdict 判为 `inconclusive`。CI 固定使用 percentile 95% inter
 预算、verdict 与 dependency lock。`run --split test` 必须同时验证两层文件存在且所有 hash 匹配，否则拒绝
 运行；该拒绝路径必须有自动测试。
 
-Pilot 默认称为 **non-blind frozen-test portfolio evaluation**。只有 Gold 由独立人员保管、实验者在 adapter、
+Pilot 默认称为 **non-blind frozen-test evaluation**。只有 Gold 由独立人员保管、实验者在 adapter、
 Prompt 和阈值冻结前不可见，才允许称为 blind test。单人实施时，在生成任何 test prediction 前记录
 dataset hash、adapter version、Prompt hash、阈值和 primary decision model；开发期间 runner 只开放 dev，
 冻结后才执行 test。这个流程降低调参泄漏，但不能消除作者对自编样本的记忆，因此不得把结果包装成无偏
@@ -544,9 +544,9 @@ IE3 的机器 Exit Gate 要求表中的七个 LLM run 全部有匹配 manifest�
 - dataset version；
 - 时间、token、费用和失败类型。
 
-### 5.3 可选算法岗扩展
+### 5.3 可选算法扩展
 
-只有目标 JD 明确偏传统 NLP/模型算法时，再增加：
+只有研究目标明确需要传统 NLP/模型算法时，再增加：
 
 - B4：中文 sentence encoder + logistic head；
 - B5：BERT/RoBERTa 小模型 fine-tune；
@@ -554,7 +554,7 @@ IE3 的机器 Exit Gate 要求表中的七个 LLM run 全部有匹配 manifest�
 - temperature scaling / conformal prediction；
 - synthetic hard-negative augmentation。
 
-这些不进入 Pilot 的完成条件。Pilot 先证明数据、OOS、baseline、指标和复现闭环；不要为了简历关键词一次引入
+这些不进入 Pilot 的完成条件。Pilot 先证明数据、OOS、baseline、指标和复现闭环；不要为了堆叠技术一次引入
 Hugging Face 训练、GPU 环境、公共数据适配和生产 runtime。
 
 ## 6. 指标与统计
@@ -815,10 +815,10 @@ inter-annotator agreement 或独立 adjudication。
   verdict；OpenAI reference 只报告自动指标；
 - 分别报告 primary/weak/cross-provider-reference 结果，并用冻结函数生成各自的
   promising/inconclusive/negative 与成本取舍；全局结论只读取 primary；
-- 整理一页 README、简历 bullet、5 分钟和 15 分钟项目讲法；
+- 整理一页 README、结构化报告和方法限制；
 - 确保 fresh checkout 可复现实验或使用已缓存响应重算报告。
 
-交付：完整报告与面试叙事。
+交付：完整报告与技术说明。
 
 ### IE5：严谨性扩展（仅 promising，追加 5～10 天）
 
@@ -844,7 +844,7 @@ inter-annotator agreement 或独立 adjudication。
 Gold、OOS、等预算对照和 badcase 分析。没有可观察 evidence 和公平 control 的双 Prompt，不构成专业
 意图识别实验。
 
-## 9. 求职交付物
+## 9. 项目交付物
 
 ### 9.1 仓库中必须看得见
 
@@ -855,43 +855,6 @@ Gold、OOS、等预算对照和 badcase 分析。没有可观察 evidence 和公
 5. metrics、confusion matrix 与 badcases；
 6. 方法 GO/NO-GO 和成本表；
 7. 单元测试与 CI 可执行的离线 evaluator。
-
-### 9.2 面试叙事
-
-五分钟版本：
-
-```text
-症状：弱模型在 Activity 闭集里反复 rest/eat
-问题：生产最终标签无法区分 evidence grounding、taxonomy gap 与额外推理预算
-边界：自主意图没有唯一 Gold，V1 只评可观察 evidence → routing
-方法：建立 open-set pilot 和五组实验臂，B2b/B3 做等调用、可比预算消融
-评测：hierarchical exact match + OOS + hard-negative + cluster CI + latency/cost
-结果：用真实数字说明语义分解是否值得，而不是宣称双 Prompt 更聪明
-上线：只有离线门通过后才讨论 Shadow，不直接改生产权威
-```
-
-十五分钟版本再展开：
-
-- 标签体系为什么这样拆；
-- near-OOS 与 hard negative 如何构造；
-- 如何防数据泄漏；
-- 为什么不相信 LLM 自报 confidence；
-- 为什么 Activity 分布均匀不是指标；
-- 哪些 badcase 来自 evidence recovery、grounding、taxonomy、abstention 或 context distraction；
-- 如何用 B2b 排除“只是多调用了一次”的解释；
-- 如果模型/成本变化，怎样替换 adapter 而不重做 evaluator。
-
-### 9.3 简历 bullet 模板
-
-只能在真实实验完成后填数字：
-
-> 构建面向 stateful Agent 的 open-set 意图识别评测系统，定义 8 类可执行 Activity 及
-> OOS/no-intent/ambiguous 标签，建设 `<160/240>` 条含 multi-turn、near-OOS 与 hard-negative 的
-> evidence-grounded 金标集；对比规则、向量、双调用计算对照与语义分解 LLM，在 `<模型>` 上将
-> hierarchical exact match 从 `<A>` 提升至 `<B>`，ID 非劣界限为 `<C>`，并完成 cluster-aware 统计、
-> badcase、延迟与成本分析。
-
-不能在实验前预填提升百分比，也不能把合成数据描述成真实用户流量。
 
 ## 10. 与原生产设计的关系
 
@@ -924,9 +887,9 @@ flowchart LR
 
 ## 11. 可选扩展路线
 
-Workbench 完成后，根据投递岗位选择一条，不同时展开：
+Workbench 完成后，根据后续研究目标选择一条，不同时展开：
 
-| 目标岗位 | 扩展 |
+| 研究方向 | 扩展 |
 |---|---|
 | Agent 应用/架构 | sampled Shadow、trace、execution-aware contract、成本与回滚 |
 | NLP/对话算法 | BERT/RoBERTa、CLINC150/BANKING77、calibration、slot filling |
@@ -934,8 +897,7 @@ Workbench 完成后，根据投递岗位选择一条，不同时展开：
 | Agent 评测 | LLM-as-a-judge 对比人工、trajectory evaluation、dashboard |
 | 数据/效果优化 | 主动学习、badcase 聚类、taxonomy discovery、标注一致性 |
 
-默认推荐顺序是：**Workbench → 投递反馈 → 针对目标 JD 选一条扩展**。不要先完成一个大而全的平台，再去
-寻找它能对应什么岗位。
+默认推荐顺序是：**Workbench → 分析实验反馈 → 选择一条扩展**。不要先完成一个大而全的平台，再寻找研究问题。
 
 ### 11.1 自主意图形成是另一类评测
 
@@ -992,18 +954,10 @@ Workbench 完成后，根据投递岗位选择一条，不同时展开：
 IE-V1 的额外完成条件是：扩到 240 条、完成标注一致性记录、cluster bootstrap 与重复稳定性，并按 §6.4
 给出是否值得讨论 sampled Shadow 的正式 GO/NO-GO。
 
-## 13. 市场与研究依据
+## 13. 研究依据
 
-本文只把招聘要求作为项目取舍依据，不把单个 JD 当成统一行业标准。2026-08-20 的参考快照包括：
+本文采用以下公开研究作为 open-set intent recognition、OOD 与模型协同设计依据：
 
-- [OPPO NLP 算法专家](https://career.oppo.com/official/oppo/recruitment/post/2031682259614556161?recruitType=SOCIAL-RECRUITMENT)：
-  意图理解、规划编排、记忆、工具调度、鲁棒性与成本；
-- [百度 NLP/Agent 算法工程师](https://talent.baidu.com/jobs/detail/SOCIAL/5bb42582-10ab-4f49-94a6-7ee296885d8f)：
-  指令理解、模型微调、产品数据分析与数据飞轮；
-- [海康威视 NLP 算法工程师](https://campushr.hikvision.com/JobDetails.html?batchId=f6bb29aecd1046d8a431dcb7810664b9&id=6b5da71cdece45a2861944ef1c168341&type=0)：
-  Transformer/BERT、文本分类、NER 与端到端落地；
-- [上海人工智能实验室大模型评测算法工程师](https://www.shlab.org.cn/joinus/detail/7629174247638714650?jobFunction=&jobType=&keyword=&location=&mode=2&subject=)：
-  benchmark、自动化评测、trajectory 与失败模式分析；
 - [CLINC150：Intent Classification and Out-of-Scope Prediction](https://aclanthology.org/D19-1131/)：
   closed-set intent 之外必须显式评测 OOS；
 - [EMNLP 2025：LLM Intent Classification and OOD Detection](https://aclanthology.org/2025.findings-emnlp.791/)：
@@ -1011,7 +965,7 @@ IE-V1 的额外完成条件是：扩到 240 条、完成标注一致性记录、
 - [EMNLP 2025：Small/Large Model Collaboration for Few-shot Intent Detection](https://aclanthology.org/2025.findings-emnlp.749/)：
   小模型候选与不确定性、LLM 精判和 OOS 的协同路线。
 
-这些材料共同支持 Workbench 的优先级：先有 taxonomy、数据、baseline、OOS、评测和失败归因，再讨论
+这些研究共同支持 Workbench 的优先级：先有 taxonomy、数据、baseline、OOS、评测和失败归因，再讨论
 模型微调或生产接管。
 
 ## 14. GO / NO-GO
@@ -1020,8 +974,8 @@ IE-V1 的额外完成条件是：扩到 240 条、完成标注一致性记录、
 
 这条路线保留了 Kindred 最独特的 affordance 与自由选择问题，但不再把自由选择伪装成有唯一答案的分类
 任务。近期交付从“生产架构改造”改成“已有意图证据能否被专业 routing 的实验”。它更小、更容易复现，
-也更贴近面试官会追问的数据、baseline、OOS、消融、公平预算、指标、badcase 和成本。
+也能系统覆盖数据、baseline、OOS、消融、公平预算、指标、badcase 和成本。
 
 最重要的是，项目不再需要先证明双阶段一定正确。能够用等计算量对照得出“B3 的收益只是第二次调用”或
 “B3 没有显著收益，因此不扩展到 240 条”，本身也是成熟的算法与工程判断；这比实现一个复杂系统后只
-展示主观体验，更能体现求职价值。
+展示主观体验更可靠。
