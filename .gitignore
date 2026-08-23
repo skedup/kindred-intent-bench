@@ -26,6 +26,8 @@ experiments/*
 !experiments/ie3-dev/**
 !experiments/ie3-test/
 !experiments/ie3-test/**
+!experiments/ie3-openai-recovery/
+!experiments/ie3-openai-recovery/**
 !experiments/reference/
 experiments/reference/*
 !experiments/reference/kir-pilot-v2-ie2-final/
