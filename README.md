@@ -187,6 +187,13 @@ Gemini primary 的 B3-B2b HEM 差为 `-0.0268`，95% CI `[-0.0708, 0.0000]`；�
 `budget_confounded`。这是一项合同优先的结论：当前不能把效果差异归因于语义分解结构，也不会绕过预算门
 把描述性点估计改判为 negative。weak 与 OpenAI 同样只作诊断参考。
 
+另按冻结合同原样运行了 `deepseek-v4-pro` 的 post-freeze robustness 实验，没有替换预注册的 Flash
+weak 角色，也没有获得全局 verdict 权限。[Pro 诊断报告](experiments/ie3-deepseek-pro-robustness/README.md)
+显示 B2b/B3 HEM 分别为 `0.2768 / 0.0714`；两臂合计 185 个 incomplete 调用全部位于 512-token
+输出上限或只差 1 token。这个结果说明同一冻结调用预算不适配 Pro 的 reasoning 输出，不能解释为 Pro
+固有能力差于 Flash。冻结的 24 个语义审计 case 中只有 4 个得到成功的 Pro Stage A 结果，因此不追加一张
+主要由失败行组成的 Pro 人工审计表，原 48 行 primary/Flash 审计继续保持不变。
+
 [语义保真审计表](outputs/2026-08-23-ie4-semantic-audit/semantic-audit.xlsx)锁定 24 个预注册 case，并对
 primary/weak 的 B3 Stage A 各审一次，共 48 行。人工只比较 source 与 taxonomy-free formed intention 的
 `action/object/horizon` 是否 `preserved/partial/lost`；该结果不进入三态 verdict，也不能反向调 test Prompt。

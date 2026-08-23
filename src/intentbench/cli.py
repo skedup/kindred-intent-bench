@@ -19,6 +19,7 @@ from intentbench.adapters.openai import OpenAIResponsesClient
 from intentbench.annotation import validate_annotation_artifacts
 from intentbench.baselines import BaselineRunError, run_b0_dev, run_b1_dev, run_b2a_dev
 from intentbench.dataset import CandidateDatasetError, validate_candidate_artifact
+from intentbench.deepseek_pro import DeepSeekProReportError, build_deepseek_pro_report
 from intentbench.embedding import EmbeddingCacheError
 from intentbench.formal_runs import FormalRunError, run_b0_test, run_b1_test, run_b2a_test
 from intentbench.freeze import FreezeGuardError, verify_test_guard
@@ -1712,6 +1713,94 @@ def ie4_report(
             seed=seed,
         )
     except (OSError, IE4ReportError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(json.dumps(report, ensure_ascii=False, sort_keys=True))
+
+
+@ie4_group.command("deepseek-pro-report")
+@click.option(
+    "--cases",
+    "cases_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=Path("data/kir-pilot-v2/test.jsonl"),
+    show_default=True,
+)
+@click.option(
+    "--taxonomy",
+    "taxonomy_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=Path("configs/kindred-activity-intents-v2.yaml"),
+    show_default=True,
+)
+@click.option(
+    "--dataset-manifest",
+    "dataset_manifest_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=Path("data/kir-pilot-v2/freeze-manifest.json"),
+    show_default=True,
+)
+@click.option(
+    "--experiment",
+    "experiment_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=Path("configs/kir-pilot-v2-ie3-deepseek-pro-robustness.yaml"),
+    show_default=True,
+)
+@click.option(
+    "--runs-root",
+    type=click.Path(path_type=Path, exists=True, file_okay=False),
+    default=Path("experiments/ie3-deepseek-pro-robustness/weak_decision"),
+    show_default=True,
+)
+@click.option(
+    "--ie4-report",
+    "ie4_report_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=Path("experiments/ie4-pilot/report.json"),
+    show_default=True,
+)
+@click.option(
+    "--output-dir",
+    type=click.Path(path_type=Path, file_okay=False),
+    default=Path("experiments/ie3-deepseek-pro-robustness"),
+    show_default=True,
+)
+@click.option(
+    "--repository-root",
+    type=click.Path(path_type=Path, exists=True, file_okay=False),
+    default=Path("."),
+    show_default=True,
+)
+@click.option("--iterations", type=click.IntRange(min=1), default=10_000, show_default=True)
+@click.option("--seed", type=int, default=20_260_820, show_default=True)
+def ie4_deepseek_pro_report(
+    cases_path: Path,
+    taxonomy_path: Path,
+    dataset_manifest_path: Path,
+    experiment_path: Path,
+    runs_root: Path,
+    ie4_report_path: Path,
+    output_dir: Path,
+    repository_root: Path,
+    iterations: int,
+    seed: int,
+) -> None:
+    """Build the post-freeze Pro diagnostic entirely from cached predictions."""
+
+    try:
+        report = build_deepseek_pro_report(
+            cases_path=cases_path,
+            taxonomy_path=taxonomy_path,
+            dataset_manifest_path=dataset_manifest_path,
+            experiment_path=experiment_path,
+            runs_root=runs_root,
+            ie4_report_path=ie4_report_path,
+            output_dir=output_dir,
+            repository_root=repository_root,
+            iterations=iterations,
+            seed=seed,
+        )
+    except (OSError, DeepSeekProReportError, ValueError) as exc:
         raise click.ClickException(str(exc)) from exc
     click.echo(json.dumps(report, ensure_ascii=False, sort_keys=True))
 

@@ -57,3 +57,11 @@ incomplete. Any B2b/B3 token difference above 10% is still reported as budget-co
 
 The current 48-row primary/Flash semantic audit is paused until these automatic Pro results are
 available. A Pro audit, if useful, will be an additional diagnostic sheet rather than a replacement.
+
+## Audit disposition
+
+The automatic run found that only 4 of the 24 frozen semantic-audit cases produced a successful Pro
+Stage A formed intention. The other 20 failed before there was semantic content to judge. Adding a
+Pro worksheet would therefore mostly duplicate the output-cap failure signal rather than assess
+semantic preservation. No Pro audit is added; the preregistered 48-row Primary + Flash audit resumes
+unchanged.
