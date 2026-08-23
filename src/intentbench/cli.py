@@ -1674,6 +1674,20 @@ def ie4_group() -> None:
     show_default=True,
 )
 @click.option(
+    "--semantic-audit-process",
+    "semantic_audit_process_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=Path("configs/kir-pilot-v2-ie4-semantic-audit-process.yaml"),
+    show_default=True,
+)
+@click.option(
+    "--split-manifest",
+    "split_manifest_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=Path("data/kir-pilot-v2/split-manifest.json"),
+    show_default=True,
+)
+@click.option(
     "--output-dir",
     type=click.Path(path_type=Path, file_okay=False),
     default=Path("experiments/ie4-pilot"),
@@ -1693,6 +1707,8 @@ def ie4_report(
     dataset_manifest_path: Path,
     matrix_path: Path,
     semantic_audit_workbook_path: Path,
+    semantic_audit_process_path: Path,
+    split_manifest_path: Path,
     output_dir: Path,
     repository_root: Path,
     iterations: int,
@@ -1707,6 +1723,8 @@ def ie4_report(
             dataset_manifest_path=dataset_manifest_path,
             matrix_path=matrix_path,
             semantic_audit_workbook_path=semantic_audit_workbook_path,
+            semantic_audit_process_path=semantic_audit_process_path,
+            split_manifest_path=split_manifest_path,
             output_dir=output_dir,
             repository_root=repository_root,
             iterations=iterations,

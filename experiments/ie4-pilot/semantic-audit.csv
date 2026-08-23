@@ -1,0 +1,97 @@
+audit_row_id,case_id,model_role,model,state_summary,conversation,recent_activities,source_evidence_quote,tags,stage_a_status,error_type,evidence_status,formed_action,formed_object,desired_experience,qualifiers,alternative_actions,formed_horizon,reason_short,action_rating,object_rating,horizon_rating,reviewer_note,reviewer_id,reviewed_at,row_status
+semantic-audit-0001,kir-pilot-v2-0001,primary_decision,Gemini 3.6 Flash,正在考虑下一项活动。,"Kindred: 我刚才还考虑过先休息。
+User: 那只是之前的候选，你现在怎么决定？
+Kindred: 现在照着雨景重新画一幅全新的插画。",—,现在照着雨景重新画一幅全新的插画。,multi_turn；slot_required；multi_turn_override,success,—,clear,照着雨景重新画一幅全新的插画,雨景插画,创作全新插画作品,现在；全新创作；之前候选已被覆盖,—,now,最新表达覆盖之前候选并明确选择现在创作全新插画,preserved,preserved,preserved,,skedushwang,2026-08-23,complete
+semantic-audit-0002,kir-pilot-v2-0001,weak_decision,DeepSeek V4 Flash,正在考虑下一项活动。,"Kindred: 我刚才还考虑过先休息。
+User: 那只是之前的候选，你现在怎么决定？
+Kindred: 现在照着雨景重新画一幅全新的插画。",—,现在照着雨景重新画一幅全新的插画。,multi_turn；slot_required；multi_turn_override,provider_failure,incomplete,—,—,—,—,—,—,—,—,lost,lost,lost,stage_a_provider_failure,skedushwang,2026-08-23,complete
+semantic-audit-0003,kir-pilot-v2-0011,primary_decision,Gemini 3.6 Flash,正在考虑下一项活动。,"User: 你前面说了几个可能，现在有唯一选择吗？
+Kindred: 去咖啡馆喝杯咖啡，顺便参加读书会。",—,去咖啡馆喝杯咖啡，顺便参加读书会。,multi_turn；slot_required；multi_turn_resolution,success,—,clear,去咖啡馆喝杯咖啡并参加读书会,咖啡馆与读书会,前往咖啡馆饮用咖啡并参与读书交流,现在,—,now,明确选择了前往咖啡馆喝咖啡并参加读书会作为当前唯一选择,preserved,preserved,preserved,,skedushwang,2026-08-23,complete
+semantic-audit-0004,kir-pilot-v2-0011,weak_decision,DeepSeek V4 Flash,正在考虑下一项活动。,"User: 你前面说了几个可能，现在有唯一选择吗？
+Kindred: 去咖啡馆喝杯咖啡，顺便参加读书会。",—,去咖啡馆喝杯咖啡，顺便参加读书会。,multi_turn；slot_required；multi_turn_resolution,provider_failure,incomplete,—,—,—,—,—,—,—,—,lost,lost,lost,stage_a_provider_failure,skedushwang,2026-08-23,complete
+semantic-audit-0005,kir-pilot-v2-0021,primary_decision,Gemini 3.6 Flash,正在考虑下一项活动。,"Kindred: 我原来想晚点再决定。
+User: 以你此刻的决定为准。
+Kindred: 现在在厨房照着食谱做晚饭吃。",—,现在在厨房照着食谱做晚饭吃。,multi_turn；slot_required；rest_eat_confusion；hypothesized_weak_model_probe；multi_turn_reconsideration,success,—,clear,照着食谱做晚饭吃,晚饭,亲自烹饪食物并享用,现在；厨房,—,now,最新表达明确现在要在厨房照着食谱做晚饭吃,preserved,partial,preserved,object缺少食谱,skedushwang,2026-08-23,complete
+semantic-audit-0006,kir-pilot-v2-0021,weak_decision,DeepSeek V4 Flash,正在考虑下一项活动。,"Kindred: 我原来想晚点再决定。
+User: 以你此刻的决定为准。
+Kindred: 现在在厨房照着食谱做晚饭吃。",—,现在在厨房照着食谱做晚饭吃。,multi_turn；slot_required；rest_eat_confusion；hypothesized_weak_model_probe；multi_turn_reconsideration,success,—,clear,照食谱做晚饭吃,晚饭,享用自己做的晚饭,现在；在厨房；照着食谱,—,now,明确当前在厨房照着食谱做晚饭吃,preserved,partial,preserved,object缺少食谱,skedushwang,2026-08-23,complete
+semantic-audit-0007,kir-pilot-v2-0024,primary_decision,Gemini 3.6 Flash,身体有些疲惫。正在考虑下一项活动。,"Kindred: 我刚才还考虑过先休息。
+User: 那只是之前的候选，你现在怎么决定？
+Kindred: 想用冰箱里的蔬菜做一顿家常饭。",—,想用冰箱里的蔬菜做一顿家常饭。,multi_turn；slot_required；rest_eat_confusion；hypothesized_weak_model_probe；multi_turn_override；context_distractor,success,—,clear,用冰箱里的蔬菜做一顿家常饭,冰箱里的蔬菜,做一顿家常饭,现在；之前候选已被覆盖,—,now,最新表达覆盖之前休息的候选，明确选择用现有食材做饭,preserved,partial,preserved,object缺少冰箱里的蔬菜,skedushwang,2026-08-23,complete
+semantic-audit-0008,kir-pilot-v2-0024,weak_decision,DeepSeek V4 Flash,身体有些疲惫。正在考虑下一项活动。,"Kindred: 我刚才还考虑过先休息。
+User: 那只是之前的候选，你现在怎么决定？
+Kindred: 想用冰箱里的蔬菜做一顿家常饭。",—,想用冰箱里的蔬菜做一顿家常饭。,multi_turn；slot_required；rest_eat_confusion；hypothesized_weak_model_probe；multi_turn_override；context_distractor,provider_failure,incomplete,—,—,—,—,—,—,—,—,lost,lost,lost,stage_a_provider_failure,skedushwang,2026-08-23,complete
+semantic-audit-0009,kir-pilot-v2-0031,primary_decision,Gemini 3.6 Flash,正在考虑下一项活动。,"Kindred: 上一项活动已经结束了。
+User: 不要自动沿用刚才的活动，接下来呢？
+Kindred: 现在发布一篇公开的周末生活帖子。",—,现在发布一篇公开的周末生活帖子。,multi_turn；slot_required；brandless_xhs；hypothesized_weak_model_probe；multi_turn_recency,success,—,clear,发布一篇公开的周末生活帖子,周末生活帖子,分享生活动态,现在；公开,—,now,最新表达明确决定现在发布公开的周末生活帖子,preserved,preserved,preserved,,skedushwang,2026-08-23,complete
+semantic-audit-0010,kir-pilot-v2-0031,weak_decision,DeepSeek V4 Flash,正在考虑下一项活动。,"Kindred: 上一项活动已经结束了。
+User: 不要自动沿用刚才的活动，接下来呢？
+Kindred: 现在发布一篇公开的周末生活帖子。",—,现在发布一篇公开的周末生活帖子。,multi_turn；slot_required；brandless_xhs；hypothesized_weak_model_probe；multi_turn_recency,success,—,clear,发布一篇公开的周末生活帖子,周末生活帖子,—,公开；现在,—,now,当前明确想发布公开的周末生活帖子,preserved,preserved,preserved,,skedushwang,2026-08-23,complete
+semantic-audit-0011,kir-pilot-v2-0033,primary_decision,Gemini 3.6 Flash,接下来看看别人公开分享的旅行照片。,—,—,接下来看看别人公开分享的旅行照片。,single_turn；slot_required；brandless_xhs；hypothesized_weak_model_probe；context_control,success,—,clear,看别人公开分享的旅行照片,旅行照片,浏览他人分享的旅行照片,公开分享,—,now,当前明确想浏览别人公开分享的旅行照片,preserved,preserved,preserved,,skedushwang,2026-08-23,complete
+semantic-audit-0012,kir-pilot-v2-0033,weak_decision,DeepSeek V4 Flash,接下来看看别人公开分享的旅行照片。,—,—,接下来看看别人公开分享的旅行照片。,single_turn；slot_required；brandless_xhs；hypothesized_weak_model_probe；context_control,provider_failure,incomplete,—,—,—,—,—,—,—,—,lost,lost,lost,stage_a_provider_failure,skedushwang,2026-08-23,complete
+semantic-audit-0013,kir-pilot-v2-0041,primary_decision,Gemini 3.6 Flash,正在考虑下一项活动。,"User: 你前面说了几个可能，现在有唯一选择吗？
+Kindred: 现在给你发一句问候。",—,现在给你发一句问候。,multi_turn；slot_required；multi_turn_resolution,success,—,clear,给你发一句问候,你,发送问候,现在；针对对话用户,—,now,最新表达明确现在给对方发送问候,preserved,preserved,preserved,,skedushwang,2026-08-23,complete
+semantic-audit-0014,kir-pilot-v2-0041,weak_decision,DeepSeek V4 Flash,正在考虑下一项活动。,"User: 你前面说了几个可能，现在有唯一选择吗？
+Kindred: 现在给你发一句问候。",—,现在给你发一句问候。,multi_turn；slot_required；multi_turn_resolution,provider_failure,incomplete,—,—,—,—,—,—,—,—,lost,lost,lost,stage_a_provider_failure,skedushwang,2026-08-23,complete
+semantic-audit-0015,kir-pilot-v2-0044,primary_decision,Gemini 3.6 Flash,窗外正在下雨。正在考虑下一项活动。,"Kindred: 我原来想晚点再决定。
+User: 以你此刻的决定为准。
+Kindred: 接下来给你发消息分享刚才看到的云。",—,接下来给你发消息分享刚才看到的云。,multi_turn；slot_required；multi_turn_reconsideration；context_distractor,success,—,clear,发消息分享刚才看到的云,刚才看到的云,分享眼前的云,接下来；发消息分享,—,now,最新表达明确接下来发消息分享看到的云,preserved,partial,preserved,object缺少消息,skedushwang,2026-08-23,complete
+semantic-audit-0016,kir-pilot-v2-0044,weak_decision,DeepSeek V4 Flash,窗外正在下雨。正在考虑下一项活动。,"Kindred: 我原来想晚点再决定。
+User: 以你此刻的决定为准。
+Kindred: 接下来给你发消息分享刚才看到的云。",—,接下来给你发消息分享刚才看到的云。,multi_turn；slot_required；multi_turn_reconsideration；context_distractor,provider_failure,incomplete,—,—,—,—,—,—,—,—,lost,lost,lost,stage_a_provider_failure,skedushwang,2026-08-23,complete
+semantic-audit-0017,kir-pilot-v2-0053,primary_decision,Gemini 3.6 Flash,接下来闭上眼安静放松十分钟。,—,—,接下来闭上眼安静放松十分钟。,single_turn；slot_required；rest_eat_confusion；hypothesized_weak_model_probe；context_control,success,—,clear,闭上眼安静放松十分钟,十分钟放松时段,闭眼安静休息,闭眼；十分钟,—,now,当前明确想闭上眼睛安静放松十分钟,preserved,preserved,preserved,,skedushwang,2026-08-23,complete
+semantic-audit-0018,kir-pilot-v2-0053,weak_decision,DeepSeek V4 Flash,接下来闭上眼安静放松十分钟。,—,—,接下来闭上眼安静放松十分钟。,single_turn；slot_required；rest_eat_confusion；hypothesized_weak_model_probe；context_control,provider_failure,incomplete,—,—,—,—,—,—,—,—,lost,lost,lost,stage_a_provider_failure,skedushwang,2026-08-23,complete
+semantic-audit-0019,kir-pilot-v2-0061,primary_decision,Gemini 3.6 Flash,正在考虑下一项活动。,"Kindred: 上一项活动已经结束了。
+User: 不要自动沿用刚才的活动，接下来呢？
+Kindred: 现在想沿着湖边步行一圈。",—,现在想沿着湖边步行一圈。,multi_turn；slot_required；multi_turn_recency,success,—,clear,沿着湖边步行一圈,湖边,户外散步放松,现在；不沿用上一项活动,—,now,最新表达明确选择现在沿着湖边步行一圈,preserved,preserved,preserved,,skedushwang,2026-08-23,complete
+semantic-audit-0020,kir-pilot-v2-0061,weak_decision,DeepSeek V4 Flash,正在考虑下一项活动。,"Kindred: 上一项活动已经结束了。
+User: 不要自动沿用刚才的活动，接下来呢？
+Kindred: 现在想沿着湖边步行一圈。",—,现在想沿着湖边步行一圈。,multi_turn；slot_required；multi_turn_recency,provider_failure,incomplete,—,—,—,—,—,—,—,—,lost,lost,lost,stage_a_provider_failure,skedushwang,2026-08-23,complete
+semantic-audit-0021,kir-pilot-v2-0063,primary_decision,Gemini 3.6 Flash,正在考虑下一项活动。,"User: 你前面说了几个可能，现在有唯一选择吗？
+Kindred: 接下来去公园的小路上散散步。",—,接下来去公园的小路上散散步。,multi_turn；slot_required；multi_turn_resolution；context_control,success,—,clear,去公园的小路上散步,公园的小路,散步放松,接下来；已有唯一选择,—,now,最新表达明确决定接下来去公园小路上散步,preserved,preserved,preserved,,skedushwang,2026-08-23,complete
+semantic-audit-0022,kir-pilot-v2-0063,weak_decision,DeepSeek V4 Flash,正在考虑下一项活动。,"User: 你前面说了几个可能，现在有唯一选择吗？
+Kindred: 接下来去公园的小路上散散步。",—,接下来去公园的小路上散散步。,multi_turn；slot_required；multi_turn_resolution；context_control,success,—,clear,去公园的小路上散散步,公园小路,在公园小路上散步,接下来；公园的小路,—,now,当前明确选择去公园小路散步,preserved,preserved,preserved,,skedushwang,2026-08-23,complete
+semantic-audit-0023,kir-pilot-v2-0073,primary_decision,Gemini 3.6 Flash,接下来去城市博物馆看历史展厅。,—,—,接下来去城市博物馆看历史展厅。,single_turn；slot_required；context_control,success,—,clear,去城市博物馆看历史展厅,城市博物馆历史展厅,参观历史展览,接下来；线下现场,—,now,明确表达接下来去城市博物馆参观历史展厅,preserved,preserved,preserved,,skedushwang,2026-08-23,complete
+semantic-audit-0024,kir-pilot-v2-0073,weak_decision,DeepSeek V4 Flash,接下来去城市博物馆看历史展厅。,—,—,接下来去城市博物馆看历史展厅。,single_turn；slot_required；context_control,provider_failure,incomplete,—,—,—,—,—,—,—,—,lost,lost,lost,stage_a_provider_failure,skedushwang,2026-08-23,complete
+semantic-audit-0025,kir-pilot-v2-0088,primary_decision,Gemini 3.6 Flash,给同一位博主私信询问穿搭链接。,—,—,给同一位博主私信询问穿搭链接。,single_turn；near_oos；hard_negative；hypothesized_weak_model_probe；slot_required,success,—,clear,给同一位博主私信询问穿搭链接,穿搭链接,向博主询问特定信息,同一位博主；私信,—,now,当前明确想私信询问博主穿搭链接,preserved,partial,preserved,object缺少博主、私信,skedushwang,2026-08-23,complete
+semantic-audit-0026,kir-pilot-v2-0088,weak_decision,DeepSeek V4 Flash,给同一位博主私信询问穿搭链接。,—,—,给同一位博主私信询问穿搭链接。,single_turn；near_oos；hard_negative；hypothesized_weak_model_probe；slot_required,success,—,clear,私信询问穿搭链接,穿搭链接,获取穿搭链接,同一位博主,—,now,当前明确想私信同一位博主获取穿搭链接,preserved,partial,preserved,object缺少博主、私信,skedushwang,2026-08-23,complete
+semantic-audit-0027,kir-pilot-v2-0094,primary_decision,Gemini 3.6 Flash,想下楼在同一街区慢跑十分钟。,—,—,想下楼在同一街区慢跑十分钟。,single_turn；near_oos；hard_negative；hypothesized_weak_model_probe；slot_required,success,—,clear,下楼慢跑十分钟,同一街区,在附近户外慢跑,下楼；同一街区；十分钟,—,now,当前明确表达了下楼在同一街区慢跑十分钟的意图,preserved,preserved,preserved,,skedushwang,2026-08-23,complete
+semantic-audit-0028,kir-pilot-v2-0094,weak_decision,DeepSeek V4 Flash,想下楼在同一街区慢跑十分钟。,—,—,想下楼在同一街区慢跑十分钟。,single_turn；near_oos；hard_negative；hypothesized_weak_model_probe；slot_required,success,—,clear,下楼慢跑十分钟,该街区慢跑路线,完成一次短时慢跑锻炼,下楼；同一街区；十分钟,—,now,当前明确想下楼在同一街区慢跑十分钟,preserved,preserved,preserved,,skedushwang,2026-08-23,complete
+semantic-audit-0029,kir-pilot-v2-0096,primary_decision,Gemini 3.6 Flash,想到这家独立书店门口取件，不进去浏览。,—,—,想到这家独立书店门口取件，不进去浏览。,single_turn；near_oos；hard_negative；hypothesized_weak_model_probe；slot_required,success,—,clear,去独立书店门口取件,独立书店包裹,取件,只在门口取件；不进去浏览,—,now,当前行动明确为去书店门口取件，且明确不进去浏览,preserved,partial,preserved,object缺少书店,skedushwang,2026-08-23,complete
+semantic-audit-0030,kir-pilot-v2-0096,weak_decision,DeepSeek V4 Flash,想到这家独立书店门口取件，不进去浏览。,—,—,想到这家独立书店门口取件，不进去浏览。,single_turn；near_oos；hard_negative；hypothesized_weak_model_probe；slot_required,provider_failure,incomplete,—,—,—,—,—,—,—,—,lost,lost,lost,stage_a_provider_failure,skedushwang,2026-08-23,complete
+semantic-audit-0031,kir-pilot-v2-0099,primary_decision,Gemini 3.6 Flash,正在考虑下一项活动。,"Kindred: 上一项活动已经结束了。
+User: 不要自动沿用刚才的活动，接下来呢？
+Kindred: 想把换下来的衣服放进洗衣机清洗。",—,想把换下来的衣服放进洗衣机清洗。,multi_turn；far_oos；slot_required；multi_turn_recency；context_control,success,—,clear,把换下来的衣服放进洗衣机清洗,换下来的衣服,清洗衣物,下一项活动,—,now,最新表达明确接下来想将换下的衣服放进洗衣机清洗,preserved,partial,preserved,object缺少洗衣机,skedushwang,2026-08-23,complete
+semantic-audit-0032,kir-pilot-v2-0099,weak_decision,DeepSeek V4 Flash,正在考虑下一项活动。,"Kindred: 上一项活动已经结束了。
+User: 不要自动沿用刚才的活动，接下来呢？
+Kindred: 想把换下来的衣服放进洗衣机清洗。",—,想把换下来的衣服放进洗衣机清洗。,multi_turn；far_oos；slot_required；multi_turn_recency；context_control,success,—,clear,把换下来的衣服放进洗衣机清洗,换下来的衣服,清洗衣物,换下来的；洗衣机,—,now,当前明确想清洗换下来的衣服,preserved,partial,preserved,object缺少洗衣机,skedushwang,2026-08-23,complete
+semantic-audit-0033,kir-pilot-v2-0117,primary_decision,Gemini 3.6 Flash,正在考虑下一项活动。,"Kindred: 我原来想晚点再决定。
+User: 以你此刻的决定为准。
+Kindred: 已经到晚饭时间了，我还没有决定要不要吃东西。",—,已经到晚饭时间了，我还没有决定要不要吃东西。,multi_turn；quiet_control；hard_negative；multi_turn_reconsideration；context_control,success,—,ambiguous,—,—,—,到晚饭时间；未决定要不要吃,吃东西；不吃东西,now,到了晚饭时间但尚未决定是否要吃东西,preserved,preserved,preserved,,skedushwang,2026-08-23,complete
+semantic-audit-0034,kir-pilot-v2-0117,weak_decision,DeepSeek V4 Flash,正在考虑下一项活动。,"Kindred: 我原来想晚点再决定。
+User: 以你此刻的决定为准。
+Kindred: 已经到晚饭时间了，我还没有决定要不要吃东西。",—,已经到晚饭时间了，我还没有决定要不要吃东西。,multi_turn；quiet_control；hard_negative；multi_turn_reconsideration；context_control,provider_failure,incomplete,—,—,—,—,—,—,—,—,lost,lost,lost,stage_a_provider_failure,skedushwang,2026-08-23,complete
+semantic-audit-0035,kir-pilot-v2-0121,primary_decision,Gemini 3.6 Flash,正在考虑下一项活动。,"Kindred: 我刚才还考虑过先休息。
+User: 那只是之前的候选，你现在怎么决定？
+Kindred: 窗外阳光很好，我现在没有出去走走的打算。",—,窗外阳光很好，我现在没有出去走走的打算。,multi_turn；quiet_control；hard_negative；multi_turn_override；context_control,success,—,none,—,—,—,否定出去走走；之前候选已被覆盖,—,now,明确否定了出去走走的打算，且没有其他当前行动安排,preserved,preserved,preserved,,skedushwang,2026-08-23,complete
+semantic-audit-0036,kir-pilot-v2-0121,weak_decision,DeepSeek V4 Flash,正在考虑下一项活动。,"Kindred: 我刚才还考虑过先休息。
+User: 那只是之前的候选，你现在怎么决定？
+Kindred: 窗外阳光很好，我现在没有出去走走的打算。",—,窗外阳光很好，我现在没有出去走走的打算。,multi_turn；quiet_control；hard_negative；multi_turn_override；context_control,provider_failure,incomplete,—,—,—,—,—,—,—,—,lost,lost,lost,stage_a_provider_failure,skedushwang,2026-08-23,complete
+semantic-audit-0037,kir-pilot-v2-0130,primary_decision,Gemini 3.6 Flash,以后有机会想看看那家博物馆，今天先不计划。,—,—,以后有机会想看看那家博物馆，今天先不计划。,single_turn；quiet_control,success,—,deferred,看看那家博物馆,那家博物馆,参观博物馆,以后有机会；今天先不计划,—,later,表达了以后想看博物馆的愿望，但明确今天不计划，属于非当前行动,preserved,preserved,preserved,,skedushwang,2026-08-23,complete
+semantic-audit-0038,kir-pilot-v2-0130,weak_decision,DeepSeek V4 Flash,以后有机会想看看那家博物馆，今天先不计划。,—,—,以后有机会想看看那家博物馆，今天先不计划。,single_turn；quiet_control,success,—,deferred,去那家博物馆看看,那家博物馆,参观博物馆,以后有机会；今天先不计划,—,later,未来愿望但明确今天不计划,preserved,preserved,preserved,,skedushwang,2026-08-23,complete
+semantic-audit-0039,kir-pilot-v2-0132,primary_decision,Gemini 3.6 Flash,周末也许约人吃饭，目前还没准备决定。,—,—,周末也许约人吃饭，目前还没准备决定。,single_turn；quiet_control,success,—,deferred,约人吃饭,—,与他人聚餐,周末；未准备决定,—,later,属于周末的未来计划，且目前明确表达还没准备决定,preserved,preserved,partial,horizon属于now,skedushwang,2026-08-23,complete
+semantic-audit-0040,kir-pilot-v2-0132,weak_decision,DeepSeek V4 Flash,周末也许约人吃饭，目前还没准备决定。,—,—,周末也许约人吃饭，目前还没准备决定。,single_turn；quiet_control,provider_failure,incomplete,—,—,—,—,—,—,—,—,lost,lost,lost,stage_a_provider_failure,skedushwang,2026-08-23,complete
+semantic-audit-0041,kir-pilot-v2-0137,primary_decision,Gemini 3.6 Flash,正在考虑下一项活动。,"Kindred: 上一项活动已经结束了。
+User: 不要自动沿用刚才的活动，接下来呢？
+Kindred: 现在有点累也有点饿，躺下还是在家做饭都行，没决定。",—,现在有点累也有点饿，躺下还是在家做饭都行，没决定。,multi_turn；hard_negative；slot_required；rest_eat_confusion；hypothesized_weak_model_probe；multi_turn_recency；context_control,success,—,ambiguous,—,—,—,暂未选择；当前疲惫和饥饿,躺下休息；在家做饭,now,存在躺下或做饭两个不同当前候选，明确表示尚未决定,preserved,preserved,preserved,,skedushwang,2026-08-23,complete
+semantic-audit-0042,kir-pilot-v2-0137,weak_decision,DeepSeek V4 Flash,正在考虑下一项活动。,"Kindred: 上一项活动已经结束了。
+User: 不要自动沿用刚才的活动，接下来呢？
+Kindred: 现在有点累也有点饿，躺下还是在家做饭都行，没决定。",—,现在有点累也有点饿，躺下还是在家做饭都行，没决定。,multi_turn；hard_negative；slot_required；rest_eat_confusion；hypothesized_weak_model_probe；multi_turn_recency；context_control,provider_failure,incomplete,—,—,—,—,—,—,—,—,lost,lost,lost,stage_a_provider_failure,skedushwang,2026-08-23,complete
+semantic-audit-0043,kir-pilot-v2-0140,primary_decision,Gemini 3.6 Flash,现在临近晚饭时间。想先休息或点外卖，两个都可以，没有决定。,—,—,想先休息或点外卖，两个都可以，没有决定。,single_turn；hard_negative；slot_required；rest_eat_confusion；hypothesized_weak_model_probe；context_distractor,success,—,ambiguous,—,—,晚饭时间进行休闲或就餐安排,临近晚饭时间；暂未决定,休息；点外卖,now,存在休息和点外卖两个当前候选，尚未做出决定,preserved,preserved,preserved,,skedushwang,2026-08-23,complete
+semantic-audit-0044,kir-pilot-v2-0140,weak_decision,DeepSeek V4 Flash,现在临近晚饭时间。想先休息或点外卖，两个都可以，没有决定。,—,—,想先休息或点外卖，两个都可以，没有决定。,single_turn；hard_negative；slot_required；rest_eat_confusion；hypothesized_weak_model_probe；context_distractor,provider_failure,incomplete,—,—,—,—,—,—,—,—,lost,lost,lost,stage_a_provider_failure,skedushwang,2026-08-23,complete
+semantic-audit-0045,kir-pilot-v2-0142,primary_decision,Gemini 3.6 Flash,身体有些疲惫。正在考虑下一项活动。,"User: 你前面说了几个可能，现在有唯一选择吗？
+Kindred: 现在想出门，散步或找家咖啡馆都可以。",—,现在想出门，散步或找家咖啡馆都可以。,multi_turn；hard_negative；slot_required；multi_turn_resolution；context_distractor,success,—,ambiguous,—,咖啡馆,出门活动放松,现在；暂未选择,散步；找家咖啡馆,now,存在出门散步或找咖啡馆两个候选，尚未做唯一选择,preserved,preserved,preserved,,skedushwang,2026-08-23,complete
+semantic-audit-0046,kir-pilot-v2-0142,weak_decision,DeepSeek V4 Flash,身体有些疲惫。正在考虑下一项活动。,"User: 你前面说了几个可能，现在有唯一选择吗？
+Kindred: 现在想出门，散步或找家咖啡馆都可以。",—,现在想出门，散步或找家咖啡馆都可以。,multi_turn；hard_negative；slot_required；multi_turn_resolution；context_distractor,provider_failure,incomplete,—,—,—,—,—,—,—,—,lost,lost,lost,stage_a_provider_failure,skedushwang,2026-08-23,complete
+semantic-audit-0047,kir-pilot-v2-0151,primary_decision,Gemini 3.6 Flash,想离开屋子一会儿，目的地还完全没想好。,—,—,想离开屋子一会儿，目的地还完全没想好。,single_turn；slot_required,success,—,ambiguous,离开屋子一会儿,—,外出走走,目的地未想好,—,now,有离家出游的意向，但目的地完全尚未决定,preserved,preserved,preserved,,skedushwang,2026-08-23,complete
+semantic-audit-0048,kir-pilot-v2-0151,weak_decision,DeepSeek V4 Flash,想离开屋子一会儿，目的地还完全没想好。,—,—,想离开屋子一会儿，目的地还完全没想好。,single_turn；slot_required,provider_failure,incomplete,—,—,—,—,—,—,—,—,lost,lost,lost,stage_a_provider_failure,skedushwang,2026-08-23,complete

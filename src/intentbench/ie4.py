@@ -8,6 +8,7 @@ import os
 import tempfile
 from collections import Counter
 from collections.abc import Sequence
+from datetime import date
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -32,11 +33,17 @@ from intentbench.schemas import (
     Split,
     StrictModel,
 )
+from intentbench.semantic_audit import (
+    SemanticAuditRoleSummary,
+    load_completed_semantic_audit,
+    semantic_audit_csv_bytes,
+)
 from intentbench.verdict import ComparisonEvidence, MetricInterval, VerdictResult, decide
 
-REPORT_SCHEMA_VERSION = 1
+REPORT_SCHEMA_VERSION = 2
 REPORT_FILENAME = "report.json"
 REPORT_MARKDOWN_FILENAME = "report.md"
+SEMANTIC_AUDIT_CSV_FILENAME = "semantic-audit.csv"
 RunRole = Literal[
     "none", "embedding", "primary_decision", "weak_decision", "cross_provider_reference"
 ]
@@ -102,7 +109,7 @@ class ComparisonSummary(StrictModel):
 
 
 class SemanticAuditStatus(StrictModel):
-    status: Literal["awaiting_human", "complete"]
+    status: Literal["complete"] = "complete"
     frozen_case_count: Literal[24] = 24
     audit_row_count: Literal[48] = 48
     audited_model_roles: tuple[Literal["primary_decision"], Literal["weak_decision"]] = (
@@ -115,18 +122,38 @@ class SemanticAuditStatus(StrictModel):
         "horizon",
     )
     affects_verdict: Literal[False] = False
+    label_authority: Literal["single_human_reviewer"] = "single_human_reviewer"
+    reviewer_id: str
+    reviewed_at: date
+    independent_second_human_review: Literal[False] = False
+    post_label_ai_qa: Literal[True] = True
+    ai_score_authority: Literal[False] = False
+    scores_overwritten_by_ai: Literal[False] = False
+    pre_ai_human_label_snapshot_retained: Literal[False] = False
+    nonbinding_ai_qa_disagreement_count: Literal[10] = 10
+    role_summaries: list[SemanticAuditRoleSummary]
     workbook: ArtifactDigest
-    csv: ArtifactDigest | None = None
+    csv: ArtifactDigest
+    process_disclosure: ArtifactDigest
+
+    @model_validator(mode="after")
+    def validate_role_summaries(self) -> SemanticAuditStatus:
+        if [summary.model_role for summary in self.role_summaries] != [
+            "primary_decision",
+            "weak_decision",
+        ]:
+            raise ValueError("semantic-audit role summaries must use frozen order")
+        return self
 
 
 class IE4PilotReport(StrictModel):
-    schema_version: Literal[1] = 1
+    schema_version: Literal[2] = 2
     artifact_kind: Literal["ie4_pilot_report"] = "ie4_pilot_report"
     dataset_version: str
     taxonomy_version: str
     split: Literal["test"] = "test"
     auto_analysis_complete: Literal[True] = True
-    pilot_status: Literal["awaiting_semantic_audit", "complete"]
+    pilot_status: Literal["complete"] = "complete"
     global_verdict_authority: Literal["primary_decision"] = "primary_decision"
     global_verdict: VerdictResult
     runs: list[RunSummary]
@@ -142,8 +169,6 @@ class IE4PilotReport(StrictModel):
             raise ValueError("only primary_decision may be global verdict authority")
         if self.global_verdict != authorities[0].verdict:
             raise ValueError("global verdict must equal the primary comparison verdict")
-        if self.pilot_status == "complete" and self.semantic_audit.status != "complete":
-            raise ValueError("pilot cannot be complete before semantic audit")
         return self
 
 
@@ -354,8 +379,7 @@ def render_markdown(report: IE4PilotReport) -> str:
     lines = [
         "# IE4 Pilot Report",
         "",
-        "> Auto analysis is complete; the frozen 48-row semantic-preservation audit "
-        "is awaiting human review.",
+        "> Auto analysis and the frozen 48-row human semantic-preservation audit are complete.",
         "",
         "## Decision",
         "",
@@ -435,10 +459,40 @@ def render_markdown(report: IE4PilotReport) -> str:
     lines.extend(
         [
             "",
+            "## Human semantic-preservation audit",
+            "",
+            f"Reviewer: `{report.semantic_audit.reviewer_id}` on "
+            f"`{report.semantic_audit.reviewed_at.isoformat()}`. The 24 frozen cases cover "
+            "B3 Stage A for the primary and weak roles (48 rows).",
+            "",
+            "| Role | Stage A failures | All fields preserved | Action P/P/L | "
+            "Object P/P/L | Horizon P/P/L |",
+            "|---|---:|---:|---:|---:|---:|",
+        ]
+    )
+    for summary in report.semantic_audit.role_summaries:
+        fields = summary.fields
+        lines.append(
+            f"| {summary.model_role} | {summary.stage_a_failure_count}/24 | "
+            f"{summary.all_fields_preserved_count}/24 | "
+            f"{fields['action'].preserved}/{fields['action'].partial}/{fields['action'].lost} | "
+            f"{fields['object'].preserved}/{fields['object'].partial}/{fields['object'].lost} | "
+            f"{fields['horizon'].preserved}/{fields['horizon'].partial}/{fields['horizon'].lost} |"
+        )
+    lines.extend(
+        [
+            "",
+            "P/P/L means preserved / partial / lost. Provider failures are retained as three "
+            "lost ratings under the frozen rubric; counts are diagnostic and are not model "
+            "accuracy metrics.",
+            "",
+            "The label authority is one human reviewer. Post-label AI assistance was limited "
+            "to completeness checks, mechanical date/formula repair, and ten non-binding rubric "
+            "disagreements; it had no score authority and did not overwrite the submitted human "
+            "ratings. No second independent human review or pre-AI label snapshot is claimed.",
+            "",
             "## Audit and interpretation boundary",
             "",
-            "- The 24 frozen cases are audited for action, object, and horizon preservation "
-            "on B3 Stage A for the primary and weak roles (48 rows).",
             "- The audit is diagnostic only. It does not change the tri-state verdict and "
             "must not be used to tune the test prompts.",
             "- A budget-confounded verdict is a contract result: it blocks causal "
@@ -479,6 +533,8 @@ def build_ie4_pilot_report(
     dataset_manifest_path: Path,
     matrix_path: Path,
     semantic_audit_workbook_path: Path,
+    semantic_audit_process_path: Path,
+    split_manifest_path: Path,
     output_dir: Path,
     repository_root: Path,
     iterations: int = BOOTSTRAP_ITERATIONS,
@@ -491,6 +547,38 @@ def build_ie4_pilot_report(
     matrix = _read_model(matrix_path, SevenRunMatrixArtifact)
     if not semantic_audit_workbook_path.is_file():
         raise IE4ReportError("semantic-audit workbook is missing")
+    primary_formed_path = (
+        repository_root
+        / next(
+            cell.run_directory
+            for cell in matrix.cells
+            if cell.role is ModelRole.PRIMARY_DECISION and cell.arm == "B3"
+        )
+        / "formed-intentions.jsonl"
+    )
+    weak_formed_path = (
+        repository_root
+        / next(
+            cell.run_directory
+            for cell in matrix.cells
+            if cell.role is ModelRole.WEAK_DECISION and cell.arm == "B3"
+        )
+        / "formed-intentions.jsonl"
+    )
+    semantic_audit = load_completed_semantic_audit(
+        workbook_path=semantic_audit_workbook_path,
+        process_path=semantic_audit_process_path,
+        cases_path=cases_path,
+        dataset_manifest_path=dataset_manifest_path,
+        split_manifest_path=split_manifest_path,
+        primary_formed_path=primary_formed_path,
+        weak_formed_path=weak_formed_path,
+        repository_root=repository_root,
+    )
+    semantic_audit_csv_path = output_dir / SEMANTIC_AUDIT_CSV_FILENAME
+    semantic_audit_csv_status = _write_artifact(
+        semantic_audit_csv_path, semantic_audit_csv_bytes(semantic_audit)
+    )
 
     baseline_specs: list[tuple[RunRole, ArmName, Path, MatrixCell | None]] = [
         ("none", "B0", repository_root / "experiments/ie3-test/baselines/b0", None),
@@ -592,13 +680,16 @@ def build_ie4_pilot_report(
     report = IE4PilotReport(
         dataset_version=matrix.dataset_version,
         taxonomy_version=matrix.taxonomy_version,
-        pilot_status="awaiting_semantic_audit",
         global_verdict=primary.verdict,
         runs=runs,
         comparisons=comparisons,
         semantic_audit=SemanticAuditStatus(
-            status="awaiting_human",
+            reviewer_id=semantic_audit.reviewer_id,
+            reviewed_at=semantic_audit.reviewed_at,
+            role_summaries=semantic_audit.role_summaries,
             workbook=_source(semantic_audit_workbook_path, repository_root),
+            csv=_source(semantic_audit_csv_path, repository_root),
+            process_disclosure=_source(semantic_audit_process_path, repository_root),
         ),
         source_artifacts={
             "test": _source(cases_path, repository_root),
@@ -617,6 +708,9 @@ def build_ie4_pilot_report(
             "remain incomplete.",
             "No production Kindred runtime, user data, or Activity authority is changed "
             "by this pilot.",
+            "The semantic audit has one human reviewer, no independent second-human "
+            "adjudication, and no retained pre-AI label snapshot; post-label AI QA had no "
+            "score authority.",
         ],
     )
     report_payload = _json_bytes(report.model_dump(mode="json"))
@@ -624,7 +718,11 @@ def build_ie4_pilot_report(
     report_status = _write_artifact(output_dir / REPORT_FILENAME, report_payload)
     markdown_status = _write_artifact(output_dir / REPORT_MARKDOWN_FILENAME, markdown_payload)
     return {
-        "status": "created" if "created" in (report_status, markdown_status) else "unchanged",
+        "status": (
+            "created"
+            if "created" in (semantic_audit_csv_status, report_status, markdown_status)
+            else "unchanged"
+        ),
         "provider_calls": 0,
         "run_count": len(runs),
         "comparison_count": len(comparisons),
@@ -633,6 +731,7 @@ def build_ie4_pilot_report(
         ),
         "global_verdict_reasons": primary.verdict.reasons,
         "pilot_status": report.pilot_status,
+        "semantic_audit_rows": len(semantic_audit.rows),
         "report_sha256": hashlib.sha256(report_payload).hexdigest(),
         "output_dir": str(output_dir),
     }

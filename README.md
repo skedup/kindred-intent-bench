@@ -4,8 +4,8 @@ Kindred Intent Bench 是一个离线优先的 open-set intent recognition Workbe
 在输入已经包含可观察意图证据时，能否把下一行动正确路由到 Activity taxonomy，同时显式处理
 `oos / no_intent / ambiguous`。
 
-它不替 Kindred 决定“应该想做什么”，也不把自主选择分布是否均匀当作正确性指标。当前已完成 IE0～IE3；
-IE4 的自动报告已经完成，正等待冻结的 48 行人工语义保真审计，随后再定稿求职材料。IE1.2
+它不替 Kindred 决定“应该想做什么”，也不把自主选择分布是否均匀当作正确性指标。当前 IE0～IE4 Pilot
+均已完成：自动报告、冻结的 48 行人工语义保真审计与[求职讲稿](docs/interview-kit.md)均已定稿。IE1.2
 已从 Kindred 实际运行环境捕获 Activity/Action grounding，并完成 taxonomy
 v2 与 160 条候选校准；158 条原人工标签按完全相同 context 迁移，2 条新增边界样本也已完成人工补审。
 32 条 grounded 仲裁结果已通过 hash gate 导入；3 条 policy impact 已用 routing + open-intent 双通道解决。
@@ -195,9 +195,16 @@ weak 角色，也没有获得全局 verdict 权限。[Pro 诊断报告](experime
 主要由失败行组成的 Pro 人工审计表，原 48 行 primary/Flash 审计继续保持不变。
 
 [语义保真审计表](outputs/2026-08-23-ie4-semantic-audit/semantic-audit.xlsx)锁定 24 个预注册 case，并对
-primary/weak 的 B3 Stage A 各审一次，共 48 行。人工只比较 source 与 taxonomy-free formed intention 的
-`action/object/horizon` 是否 `preserved/partial/lost`；该结果不进入三态 verdict，也不能反向调 test Prompt。
-完成审计并导出 `semantic-audit.csv` 后，才会把 Pilot 状态改为 complete 并定稿简历 bullet 与 5/15 分钟讲法。
+primary/weak 的 B3 Stage A 各审一次，共 48 行；经哈希绑定导出的
+[完整 CSV](experiments/ie4-pilot/semantic-audit.csv)已进入最终报告。人工只比较 source 与 taxonomy-free
+formed intention 的 `action/object/horizon` 是否 `preserved/partial/lost`：primary 的三项 P/P/L 分别为
+`24/0/0、18/6/0、23/1/0`，17/24 行三项全部 preserved；weak 有 17/24 行 Stage A provider failure，三项
+分别为 `7/0/17、4/3/17、7/0/17`，因此不能把这组计数解释为独立的模型准确率。
+
+审计标签权威是单个人工 reviewer，没有第二位独立标注者。人工提交后，AI 只做完整性检查、日期/公式机械
+修复，并记录 10 个非约束性 rubric 分歧；AI 没有评分权，也没有覆盖人工评分，且不存在可用于独立性比较的
+pre-AI 标签快照。以上过程由[冻结披露](configs/kir-pilot-v2-ie4-semantic-audit-process.yaml)和报告哈希绑定；
+审计仍只作诊断，不进入三态 verdict，也不能反向调 test Prompt。
 
 ```bash
 uv run intentbench ie4 report

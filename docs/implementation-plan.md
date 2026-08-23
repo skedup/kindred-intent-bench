@@ -1,6 +1,6 @@
 # Kindred Intent Bench 实施计划
 
-> Status: `IE0 complete / IE1 complete and dataset frozen / IE2 complete / IE3 complete / IE4 automatic report complete; semantic audit pending`
+> Status: `IE0 complete / IE1 complete and dataset frozen / IE2 complete / IE3 complete / IE4 complete`
 >
 > 日期：2026-08-23
 >
@@ -376,6 +376,10 @@ corrected B2b/B3 HEM 为 0.9911/0.9464，B3-B2b paired 95% interval 为
 - 原始 test、Gold、Prompt 和 primary model 在看到结果后没有被修改。
 
 ### IE4：统计结论、报告与求职交付（第 7～9 天）
+
+完成记录（2026-08-23）：缓存预测已重算为 schema v2 报告；24 个冻结 case × primary/weak 的 48 行
+单人语义保真审计已完成并导出 CSV；单人 reviewer、post-label AI 机械 QA、无独立二审和无 pre-AI 快照
+均在冻结过程披露中显式记录；简历 bullet 与 5/15 分钟讲法见 [interview-kit.md](interview-kit.md)。
 
 #### IE4.1 自动报告
 

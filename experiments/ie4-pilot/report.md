@@ -1,6 +1,6 @@
 # IE4 Pilot Report
 
-> Auto analysis is complete; the frozen 48-row semantic-preservation audit is awaiting human review.
+> Auto analysis and the frozen 48-row human semantic-preservation audit are complete.
 
 ## Decision
 
@@ -32,9 +32,21 @@ Intervals are 95% paired cluster-bootstrap intervals with the frozen seed and 10
 | weak_decision | diagnostic | -0.402 [-0.525, -0.273] | -0.397 [-0.603, -0.202] | -0.545 [-0.818, -0.273] | -0.235 [-0.533, +0.062] | 41.5% | inconclusive | budget_confounded, incomplete_cost |
 | cross_provider_reference | diagnostic | -0.045 [-0.094, -0.009] | -0.034 [-0.125, +0.000] | +0.000 [+0.000, +0.000] | -0.118 [-0.353, +0.000] | 19.5% | inconclusive | budget_confounded, incomplete_cost |
 
+## Human semantic-preservation audit
+
+Reviewer: `skedushwang` on `2026-08-23`. The 24 frozen cases cover B3 Stage A for the primary and weak roles (48 rows).
+
+| Role | Stage A failures | All fields preserved | Action P/P/L | Object P/P/L | Horizon P/P/L |
+|---|---:|---:|---:|---:|---:|
+| primary_decision | 0/24 | 17/24 | 24/0/0 | 18/6/0 | 23/1/0 |
+| weak_decision | 17/24 | 4/24 | 7/0/17 | 4/3/17 | 7/0/17 |
+
+P/P/L means preserved / partial / lost. Provider failures are retained as three lost ratings under the frozen rubric; counts are diagnostic and are not model accuracy metrics.
+
+The label authority is one human reviewer. Post-label AI assistance was limited to completeness checks, mechanical date/formula repair, and ten non-binding rubric disagreements; it had no score authority and did not overwrite the submitted human ratings. No second independent human review or pre-AI label snapshot is claimed.
+
 ## Audit and interpretation boundary
 
-- The 24 frozen cases are audited for action, object, and horizon preservation on B3 Stage A for the primary and weak roles (48 rows).
 - The audit is diagnostic only. It does not change the tri-state verdict and must not be used to tune the test prompts.
 - A budget-confounded verdict is a contract result: it blocks causal attribution to the B3 structure even when point estimates or intervals look favorable or unfavorable.
 
@@ -45,3 +57,4 @@ Intervals are 95% paired cluster-bootstrap intervals with the frozen seed and 10
 - Cached predictions make evaluation reproducible, but hosted model inference is not fully replayable.
 - Weak and cross-provider pricing is not registered, so their cost gates remain incomplete.
 - No production Kindred runtime, user data, or Activity authority is changed by this pilot.
+- The semantic audit has one human reviewer, no independent second-human adjudication, and no retained pre-AI label snapshot; post-label AI QA had no score authority.

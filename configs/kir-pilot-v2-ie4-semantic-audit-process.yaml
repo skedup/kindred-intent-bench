@@ -1,0 +1,36 @@
+schema_version: 1
+status: frozen
+audit_id: kir-pilot-v2-ie4-semantic-preservation
+label_authority: single_human_reviewer
+human_reviewer_id: skedushwang
+independent_second_human_review: false
+sequence: human_ratings_then_post_label_ai_qa
+pre_ai_human_label_snapshot_retained: false
+ai_assistance:
+  score_authority: false
+  scores_overwritten: false
+  allowed_effects:
+    - completeness_check
+    - reviewed_at_date_type_fix
+    - row_status_formula_fill
+    - nonbinding_rubric_disagreement_logging
+  nonbinding_disagreements:
+    object_slot_boundary:
+      - semantic-audit-0005
+      - semantic-audit-0006
+      - semantic-audit-0007
+      - semantic-audit-0015
+      - semantic-audit-0025
+      - semantic-audit-0026
+      - semantic-audit-0029
+      - semantic-audit-0031
+      - semantic-audit-0032
+    horizon_reference_frame:
+      - semantic-audit-0039
+  disposition: human_scores_preserved_as_submitted
+reporting_constraints:
+  affects_tri_state_verdict: false
+  claim_inter_annotator_agreement: false
+  claim_independent_adjudication: false
+  disclose_single_reviewer: true
+  disclose_post_label_ai_qa: true

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -32,8 +33,19 @@ def test_generated_report_has_one_primary_authority_and_reproducible_markdown() 
     assert report.global_verdict == authorities[0].verdict
     assert report.global_verdict.verdict is Verdict.INCONCLUSIVE
     assert report.global_verdict.reasons == ["budget_confounded"]
-    assert report.pilot_status == "awaiting_semantic_audit"
+    assert report.schema_version == 2
+    assert report.pilot_status == "complete"
     assert report.semantic_audit.affects_verdict is False
+    assert report.semantic_audit.reviewer_id == "skedushwang"
+    assert report.semantic_audit.reviewed_at == date(2026, 8, 23)
+    assert report.semantic_audit.independent_second_human_review is False
+    assert report.semantic_audit.ai_score_authority is False
+    assert report.semantic_audit.scores_overwritten_by_ai is False
+    assert report.semantic_audit.nonbinding_ai_qa_disagreement_count == 10
+    assert [item.model_role for item in report.semantic_audit.role_summaries] == [
+        "primary_decision",
+        "weak_decision",
+    ]
     assert len(report.runs) == 9
 
     markdown_path = repository_root() / "experiments/ie4-pilot/report.md"

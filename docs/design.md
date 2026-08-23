@@ -1,6 +1,6 @@
 # 求职优先的意图识别 Workbench：数据、基线、OOS 与评测闭环
 
-> ✅ **Status**: `IE0 complete / IE1 complete and dataset frozen / IE2 complete / IE3 complete / IE4 automatic report complete; semantic audit pending`
+> ✅ **Status**: `IE0 complete / IE1 complete and dataset frozen / IE2 complete / IE3 complete / IE4 complete`
 >
 > 日期：2026-08-23
 >
@@ -805,6 +805,10 @@ tests/               # unit、contract、offline integration
 交付：B2b/B3 paired 结果，不接入生产 Sense。
 
 ### IE4：Pilot 报告与求职材料（1～1.5 天）
+
+完成状态：结构化报告、48 行单人语义保真审计、过程披露、可移植 CSV 与求职讲稿均已交付。审计在人工
+提交后接受过无评分权的 AI 完整性/机械 QA；没有独立第二标注者，也没有保留 pre-AI 标签快照，故不声称
+inter-annotator agreement 或独立 adjudication。
 
 - 生成指标表、paired cluster-bootstrap CI、混淆矩阵和 badcase taxonomy；
 - 按冻结 rubric 完成 24-case × primary/weak 的 `semantic-audit.csv`，共 48 行，只作诊断，不进入三态
