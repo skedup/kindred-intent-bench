@@ -28,6 +28,7 @@ from intentbench.grounding import (
     load_grounding_snapshot,
     validate_grounding_alignment,
 )
+from intentbench.ie4 import IE4ReportError, build_ie4_pilot_report
 from intentbench.materialize import MaterializationContractError, materialize_adjudicated_cases
 from intentbench.matrix import MatrixValidationError, build_seven_run_matrix
 from intentbench.providers import (
@@ -1626,6 +1627,91 @@ def ie3_matrix_check(
             repository_root=repository_root,
         )
     except (OSError, FreezeGuardError, MatrixValidationError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(json.dumps(report, ensure_ascii=False, sort_keys=True))
+
+
+@main.group("ie4")
+def ie4_group() -> None:
+    """Generate the offline IE4 pilot report from frozen cached predictions."""
+
+
+@ie4_group.command("report")
+@click.option(
+    "--cases",
+    "cases_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=Path("data/kir-pilot-v2/test.jsonl"),
+    show_default=True,
+)
+@click.option(
+    "--taxonomy",
+    "taxonomy_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=Path("configs/kindred-activity-intents-v2.yaml"),
+    show_default=True,
+)
+@click.option(
+    "--dataset-manifest",
+    "dataset_manifest_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=Path("data/kir-pilot-v2/freeze-manifest.json"),
+    show_default=True,
+)
+@click.option(
+    "--matrix",
+    "matrix_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=Path("experiments/ie3-openai-recovery/seven-run-matrix.json"),
+    show_default=True,
+)
+@click.option(
+    "--semantic-audit-workbook",
+    "semantic_audit_workbook_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=Path("outputs/2026-08-23-ie4-semantic-audit/semantic-audit.xlsx"),
+    show_default=True,
+)
+@click.option(
+    "--output-dir",
+    type=click.Path(path_type=Path, file_okay=False),
+    default=Path("experiments/ie4-pilot"),
+    show_default=True,
+)
+@click.option(
+    "--repository-root",
+    type=click.Path(path_type=Path, exists=True, file_okay=False),
+    default=Path("."),
+    show_default=True,
+)
+@click.option("--iterations", type=click.IntRange(min=1), default=10_000, show_default=True)
+@click.option("--seed", type=int, default=20_260_820, show_default=True)
+def ie4_report(
+    cases_path: Path,
+    taxonomy_path: Path,
+    dataset_manifest_path: Path,
+    matrix_path: Path,
+    semantic_audit_workbook_path: Path,
+    output_dir: Path,
+    repository_root: Path,
+    iterations: int,
+    seed: int,
+) -> None:
+    """Write evaluations, paired CIs, tri-state verdicts, and the pilot report."""
+
+    try:
+        report = build_ie4_pilot_report(
+            cases_path=cases_path,
+            taxonomy_path=taxonomy_path,
+            dataset_manifest_path=dataset_manifest_path,
+            matrix_path=matrix_path,
+            semantic_audit_workbook_path=semantic_audit_workbook_path,
+            output_dir=output_dir,
+            repository_root=repository_root,
+            iterations=iterations,
+            seed=seed,
+        )
+    except (OSError, IE4ReportError, ValueError) as exc:
         raise click.ClickException(str(exc)) from exc
     click.echo(json.dumps(report, ensure_ascii=False, sort_keys=True))
 

@@ -4,15 +4,14 @@ Kindred Intent Bench 是一个离线优先的 open-set intent recognition Workbe
 在输入已经包含可观察意图证据时，能否把下一行动正确路由到 Activity taxonomy，同时显式处理
 `oos / no_intent / ambiguous`。
 
-它不替 Kindred 决定“应该想做什么”，也不把自主选择分布是否均匀当作正确性指标。当前已完成 IE0、IE1、
-IE2，以及 IE3 的实现、Gemini dev Prompt 选择、experiment freeze 和首次正式 test；下一阶段是 IE4 的
-统计结论与求职报告。IE1.2
+它不替 Kindred 决定“应该想做什么”，也不把自主选择分布是否均匀当作正确性指标。当前已完成 IE0～IE3；
+IE4 的自动报告已经完成，正等待冻结的 48 行人工语义保真审计，随后再定稿求职材料。IE1.2
 已从 Kindred 实际运行环境捕获 Activity/Action grounding，并完成 taxonomy
 v2 与 160 条候选校准；158 条原人工标签按完全相同 context 迁移，2 条新增边界样本也已完成人工补审。
 32 条 grounded 仲裁结果已通过 hash gate 导入；3 条 policy impact 已用 routing + open-intent 双通道解决。
 160 条带 reviewer/adjudicator provenance 的 Gold 已完成 IE1.3 group-safe split：48 条 dev、112 条 frozen
-test，dataset card、split manifest、SHA-256 与 24 条 semantic-audit IDs 均已冻结。仓库尚未运行 frozen
-test；B0/B1/B2a 只运行了 frozen dev，experiment lock 仍为 draft，也没有接入 Kindred 生产路径。
+test，dataset card、split manifest、SHA-256 与 24 条 semantic-audit IDs 均已冻结。B0/B1/B2a/B2b/B3
+正式 test、三角色七格矩阵和 OpenAI 定向恢复均已有脱敏缓存产物；项目仍未接入 Kindred 生产路径。
 
 ## IE0 已实现
 
@@ -176,6 +175,30 @@ dev 数字仍只是 48 条 synthetic、non-blind selection set 的结果。
 `gpt-5.6-luna` 是跨 Provider 参考复现，二者只运行 `B2b/B3` 并各自比较 `B3-B2b`，不跨模型平均、
 不在看到 test 后替换 primary。B1 embedding 固定为 `gemini-embedding-001`。
 
+## IE4 自动报告与人工审计
+
+[结构化 IE4 报告](experiments/ie4-pilot/report.json)和[可读报告](experiments/ie4-pilot/report.md)完全由缓存
+prediction 离线生成，覆盖 B0/B1、primary B2a/B2b/B3、weak B2b/B3 和修复后的 OpenAI B2b/B3，共 9 个
+run；每个 run 都附带 metrics、normalized confusion 与全量 badcases。三组 B3-B2b 比较分别执行冻结 seed
+下 10,000 次 paired cluster bootstrap，不平均、不投票。
+
+Gemini primary 的 B3-B2b HEM 差为 `-0.0268`，95% CI `[-0.0708, 0.0000]`；实际 token 差为
+`20.62%`，超过预注册的 `10%` 公平预算门。因此全局 tri-state verdict 是 `inconclusive`，唯一判定原因是
+`budget_confounded`。这是一项合同优先的结论：当前不能把效果差异归因于语义分解结构，也不会绕过预算门
+把描述性点估计改判为 negative。weak 与 OpenAI 同样只作诊断参考。
+
+[语义保真审计表](outputs/2026-08-23-ie4-semantic-audit/semantic-audit.xlsx)锁定 24 个预注册 case，并对
+primary/weak 的 B3 Stage A 各审一次，共 48 行。人工只比较 source 与 taxonomy-free formed intention 的
+`action/object/horizon` 是否 `preserved/partial/lost`；该结果不进入三态 verdict，也不能反向调 test Prompt。
+完成审计并导出 `semantic-audit.csv` 后，才会把 Pilot 状态改为 complete 并定稿简历 bullet 与 5/15 分钟讲法。
+
+```bash
+uv run intentbench ie4 report
+```
+
+该命令只读取冻结 Gold 与已缓存 prediction，重复运行会验证所有产物字节一致并返回 `unchanged`，
+`provider_calls=0`。
+
 ## 本地门检
 
 需要 Python 3.10+ 与 [uv](https://docs.astral.sh/uv/)：
@@ -193,6 +216,7 @@ uv run intentbench dataset candidates validate
 uv run intentbench dataset reviews status
 uv run intentbench dataset gold split-freeze
 uv run intentbench evaluate --help
+uv run intentbench ie4 report
 ```
 
 以上命令不访问 LLM/embedding Provider；最后一条在已冻结仓库上执行幂等再验证并返回 `unchanged`。正式

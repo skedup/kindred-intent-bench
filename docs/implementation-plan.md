@@ -1,6 +1,6 @@
 # Kindred Intent Bench 实施计划
 
-> Status: `IE0 complete / IE1 complete and dataset frozen / IE2 complete / IE3 complete / IE4 next`
+> Status: `IE0 complete / IE1 complete and dataset frozen / IE2 complete / IE3 complete / IE4 automatic report complete; semantic audit pending`
 >
 > 日期：2026-08-23
 >
