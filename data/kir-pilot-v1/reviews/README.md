@@ -95,4 +95,4 @@ uv run intentbench dataset reviews build-adjudication-packet
 `product_policy_required=0`；因此不要继续填写或复用这个旧包。v2 补审完成后重新生成当前仲裁包。
 
 同一 reviewer 的 retest 现在只能作为可选的 intra-annotator stability 检查，不构成 IAA。真正的独立一致性
-需要第二名未见候选草稿的 reviewer；求职版 pilot 当前只需如实披露这一限制。
+需要第二名未见候选草稿的 reviewer；当前 pilot 只需如实披露这一限制。

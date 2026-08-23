@@ -92,5 +92,5 @@ Initial pass 已完成 160/160 并保留工作簿导入回执，但 17 条受控
 8. 全部完成后才允许 materialize 为正式 `Case`，再进入 IE1.3 group split。
 
 当前是单人 initial blind review，不提供独立双标 IAA。草稿已经揭示后，同一 reviewer 的重标至多衡量
-intra-annotator test-retest consistency，不再是独立 blind label；求职版 pilot 可不把它作为当前 gate，但
+intra-annotator test-retest consistency，不再是独立 blind label；当前 pilot 可不把它作为当前 gate，但
 必须在最终 dataset card 披露限制。若需要正式 IAA，应增加第二名未见草稿的独立 reviewer。

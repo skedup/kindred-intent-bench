@@ -622,7 +622,7 @@ def _dataset_card(
 
 KIR Pilot v2 是 Kindred activity routing 的离线、开放集意图识别评测集。它包含 160 条中文合成场景：dev 48 条、frozen test 112 条。所有条目均经过人工盲审或仲裁，正式 Case 保留逐条 review provenance。
 
-本数据集只用于离线求职作品与方法验证，不接入 Kindred 生产路径，也不代表线上自然流量分布。
+本数据集只用于离线方法验证，不接入 Kindred 生产路径，也不代表线上自然流量分布。
 
 ## 来源与标注
 
