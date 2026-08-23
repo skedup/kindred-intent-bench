@@ -342,21 +342,28 @@ def formed_intention_response_schema() -> dict[str, Any]:
     }
 
 
-def two_call_prediction_response_schema(taxonomy: Taxonomy) -> dict[str, Any]:
-    """Tighten the shared Prediction schema so ambiguous candidates cannot contain one item."""
+def two_call_prediction_response_schema(
+    taxonomy: Taxonomy, *, openai_strict_compatible: bool = False
+) -> dict[str, Any]:
+    """Tighten ambiguous candidates within the selected Provider's JSON Schema subset."""
 
     schema = prediction_response_schema(taxonomy)
     intent_names = [intent.name for intent in taxonomy.intents]
+    item_schema = {"type": "string", "enum": intent_names}
+    empty_array_schema: dict[str, Any] = {"type": "array", "maxItems": 0}
+    multiple_array_schema: dict[str, Any] = {
+        "type": "array",
+        "items": item_schema,
+        "minItems": 2,
+        "uniqueItems": True,
+    }
+    if openai_strict_compatible:
+        # OpenAI Structured Outputs supports minItems/maxItems but not uniqueItems.
+        # Keep item typing on both anyOf branches and enforce uniqueness locally in Prediction.
+        empty_array_schema["items"] = item_schema
+        multiple_array_schema.pop("uniqueItems")
     schema["properties"]["candidate_intents"] = {
-        "anyOf": [
-            {"type": "array", "maxItems": 0},
-            {
-                "type": "array",
-                "items": {"type": "string", "enum": intent_names},
-                "minItems": 2,
-                "uniqueItems": True,
-            },
-        ]
+        "anyOf": [empty_array_schema, multiple_array_schema]
     }
     return schema
 

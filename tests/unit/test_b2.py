@@ -13,6 +13,7 @@ from intentbench.b2 import (
     StageASupervisionReceipt,
     render_b3_stage_a_prompt,
     render_b3_stage_b_prompt,
+    two_call_prediction_response_schema,
     validate_stage_a_supervision,
 )
 from intentbench.b2a import validate_few_shot_cases
@@ -77,6 +78,21 @@ def test_formed_intention_truth_table_rejects_invented_positive_none() -> None:
             horizon="now",
             reason_short="还没有选择",
         )
+
+
+def test_openai_routing_schema_uses_supported_array_subset_with_local_uniqueness() -> None:
+    taxonomy = load_taxonomy(Path("configs/kindred-activity-intents-v2.yaml"))
+
+    default_candidates = two_call_prediction_response_schema(taxonomy)["properties"][
+        "candidate_intents"
+    ]
+    openai_candidates = two_call_prediction_response_schema(
+        taxonomy, openai_strict_compatible=True
+    )["properties"]["candidate_intents"]
+
+    assert default_candidates["anyOf"][1]["uniqueItems"] is True
+    assert all("items" in branch for branch in openai_candidates["anyOf"])
+    assert all("uniqueItems" not in branch for branch in openai_candidates["anyOf"])
 
 
 def test_stage_a_prompt_has_no_taxonomy_and_stage_b_has_no_current_raw_context() -> None:

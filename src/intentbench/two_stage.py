@@ -741,7 +741,9 @@ def _run_b2b(
         repository_root=repository_root,
     )
     verifier_template = verifier_path.read_text(encoding="utf-8")
-    response_schema = two_call_prediction_response_schema(taxonomy)
+    response_schema = two_call_prediction_response_schema(
+        taxonomy, openai_strict_compatible=spec.provider == "openai"
+    )
     taxonomy_sha256 = sha256_file(taxonomy_path)
     verifier_shots_sha256 = verifier_few_shot_sha256(few_shots)
     cache = GenerationCache(cache_dir)
@@ -1063,7 +1065,9 @@ def _run_b3(
     stage_a_template = stage_a_path.read_text(encoding="utf-8")
     stage_b_template = stage_b_path.read_text(encoding="utf-8")
     stage_a_schema = formed_intention_response_schema()
-    stage_b_schema = two_call_prediction_response_schema(taxonomy)
+    stage_b_schema = two_call_prediction_response_schema(
+        taxonomy, openai_strict_compatible=spec.provider == "openai"
+    )
     taxonomy_sha256 = sha256_file(taxonomy_path)
     stage_a_shots_sha256 = stage_a_few_shot_sha256(few_shots, supervision)
     stage_b_shots_sha256 = stage_b_few_shot_sha256(few_shots, supervision)
